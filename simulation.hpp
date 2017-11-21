@@ -71,6 +71,15 @@ public: // ctor
 		double ux,uy,rho;
 //		double k=80.,delta=0.05; //for doubly periodic shear layer
 		double Kx=2*pi/l.nx,Ky=2*pi/l.ny,K=sqrt(pow(Kx,2)+pow(Ky,2)),Ma=Vmax*sqrt(3);*/
+
+		//Initialize Cyclinder
+		Cyl_center[0] = 30.0;
+		Cyl_center[1] = 30.0;
+		Cyl_radius = 5.0;
+		Cyl_vel[0] = 0.0;
+		Cyl_vel[1] = 0.0;
+		l.add_wallCylinder(Cyl_center, Cyl_radius);
+
 		#pragma omp parallel for
 		for (int j=0; j<static_cast<int>(l.ny); ++j)
 		{
@@ -81,29 +90,33 @@ public: // ctor
 
 			for (int i=0; i<static_cast<int>(l.nx); ++i)
 			{	//initializing velocities and density for doubly periodic shear layer	
-				/*ux=Vmax*( std::tanh(k*( (float)j/(float)l.ny -.25 )) );
-				uy=Vmax*delta*( std::sin(2.*pi*( (float)i/(float)l.nx + .25 ) ) );
-				l.get_node(i,j).u()  = ux;
-				l.get_node(i,j).v()  = uy;
-				l.get_node(i,j).rho() = 1.0;
-				if (j>static_cast<int>(l.ny/2))
+				if(!l.get_node(i,j).has_flag_property("solid"))
 				{
-					ux=Vmax*( std::tanh(-k*( (float)j/(float)l.ny-.75 )) );
+					/*ux=Vmax*( std::tanh(k*( (float)j/(float)l.ny -.25 )) );
+					uy=Vmax*delta*( std::sin(2.*pi*( (float)i/(float)l.nx + .25 ) ) );
 					l.get_node(i,j).u()  = ux;
-				}*/
-
-				//initialization for 2d taylor green vortex flow
-				ux=-Vmax*Ky/K*sin(Ky*j)*cos(Kx*i);
-				uy=Vmax*Kx/K*sin(Kx*i)*cos(Ky*j);
-				rho=1-pow(Ma/K,2)/2*(pow(Ky,2)*cos(2*Kx*i)+pow(Kx,2)*cos(2*Ky*j));
-				l.get_node(i,j).u()  = ux;
-				l.get_node(i,j).v()  = uy;
-				l.get_node(i,j).rho() = rho;
-				//initialize populations, rho initially 1 for doubly periodic shear layer
-				for (unsigned int k=0; k<velocity_set().size; ++k)
+					l.get_node(i,j).v()  = uy;
+					l.get_node(i,j).rho() = 1.0;
+					if (j>static_cast<int>(l.ny/2))
 					{
-					l.get_node(i,j).f(k)=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
+						ux=Vmax*( std::tanh(-k*( (float)j/(float)l.ny-.75 )) );
+						l.get_node(i,j).u()  = ux;
+					}*/
+
+					//initialization for 2d taylor green vortex flow
+
+					ux=-Vmax*Ky/K*sin(Ky*j)*cos(Kx*i);
+					uy=Vmax*Kx/K*sin(Kx*i)*cos(Ky*j);
+					rho=1-pow(Ma/K,2)/2*(pow(Ky,2)*cos(2*Kx*i)+pow(Kx,2)*cos(2*Ky*j));
+					l.get_node(i,j).u()  = ux;
+					l.get_node(i,j).v()  = uy;
+					l.get_node(i,j).rho() = rho;
+					//initialize populations, rho initially 1 for doubly periodic shear layer
+					for (unsigned int k=0; k<velocity_set().size; ++k)
+					{
+						l.get_node(i,j).f(k)=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
 					}
+				}
 			}
 		}
 	}
@@ -201,7 +214,35 @@ public: // ctor
 			// **************************
 			// * fill in your code here *
 			// **************************
+
+			bool dir_solid[9] = {false, false, false, false, false, false, false, false, false};
+
+
+			unsigned int x_i = l.wall_nodes[i].coord.i;
+			unsigned int y_j = l.wall_nodes[i].coord.j;
+
+			//Get direction to solid according to the c-directions
+			if (l.get_node(x_i+1,y_j).has_flag_property("solid") )
+				dir_solid[1] = true;
+			if (l.get_node(x_i,y_j+1).has_flag_property("solid") )
+				dir_solid[2] = true;
+			if ( l.get_node(x_i-1,y_j).has_flag_property("solid") )
+				dir_solid[3] = true;
+			if ( l.get_node(x_i,y_j-1).has_flag_property("solid") )
+				dir_solid[4] = true;
+			if ( l.get_node(x_i+1,y_j+1).has_flag_property("solid") )
+				dir_solid[5] = true;
+			if ( l.get_node(x_i-1,y_j+1).has_flag_property("solid") )
+				dir_solid[6] = true;
+			if ( l.get_node(x_i-1,y_j-1).has_flag_property("solid") )
+				dir_solid[7] = true;
+			if ( l.get_node(x_i+1,y_j-1).has_flag_property("solid") )
+				dir_solid[8] = true;
+
 		}
+
+
+
 	}
 	
 	/** @brief collide the populations */
@@ -218,31 +259,61 @@ public: // ctor
 		{
 			for (int i=0; i<static_cast<int>(l.nx); ++i)
 			{	//calculation of rho, ux and uy for the node
-				rho=0.,ux=0.,uy=0.;
-				for (unsigned int temp=0; temp<velocity_set().size; ++temp)
+				if(l.get_node(i,j).has_flag_property("fluid"))
+				{
+					rho=0.,ux=0.,uy=0.;
+					for (unsigned int temp=0; temp<velocity_set().size; ++temp)
+						{
+						rho+=l.get_node(i,j).f(temp);
+						ux+=l.get_node(i,j).f(temp) * velocity_set().c[0][temp];
+						uy+=l.get_node(i,j).f(temp) * velocity_set().c[1][temp];
+						}
+					ux=ux/rho;
+					uy=uy/rho;				
+					l.get_node(i,j).rho()=rho;
+					l.get_node(i,j).u()   = ux;
+					l.get_node(i,j).v()   = uy;
+					
+					//collide populations
+					#pragma omp parallel for /*num_threads(8)*/
+					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
-					rho+=l.get_node(i,j).f(temp);
-					ux+=l.get_node(i,j).f(temp) * velocity_set().c[0][temp];
-					uy+=l.get_node(i,j).f(temp) * velocity_set().c[1][temp];
+						feq=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
+						l.get_node(i,j).f(k)+=2.*beta*(feq-l.get_node(i,j).f(k));
 					}
-				ux=ux/rho;
-				uy=uy/rho;				
-				l.get_node(i,j).rho()=rho;
-				l.get_node(i,j).u()   = ux;
-				l.get_node(i,j).v()   = uy;
-				
-				//collide populations
-				#pragma omp parallel for /*num_threads(8)*/
-				for (unsigned int k=0; k<velocity_set().size; ++k)
-					{
-					feq=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
-					l.get_node(i,j).f(k)+=2.*beta*(feq-l.get_node(i,j).f(k));
-					}
+				}
 			}
 		}
 		
 		
 	}
+	/** @brief Adaption of the Cylinder position  */
+	void Adapt_Cyl()
+	{
+		// **************************
+		// * fill in your code here *
+		// **************************
+
+		//Steps to implement the boundary in every timestep in case of a moving solid
+
+		//Calculate Force
+
+		//Calculate Acceleration
+
+		//Calculate and update Velocity
+
+		//Update position of solid
+		
+
+		/*
+		//Update Boundaries and node Properties
+		l.delete_solids()
+		l.delete_walls()
+
+		l.add_wallCylinder(Cyl_center, Cyl_radius)
+		*/
+	}
+
 	
 	/** @brief LB step */
 	void step()
@@ -250,6 +321,7 @@ public: // ctor
 		advect();
 		wall_bc();
 		collide();
+		Adapt_Cyl();
 		
 		// file io
 		if ( file_output && ( ((time+1) % output_freq) == 0 || time == 0 ) )
@@ -298,6 +370,9 @@ public: // members
 	bool file_output;          ///< flag whether to write files
 	unsigned int output_freq;  ///< file output frequency
 	unsigned int output_index; ///< index for file naming
+	float_type Cyl_center[2];
+	float_type Cyl_radius;
+	float_type Cyl_vel[2];
 };
 
 } // lb

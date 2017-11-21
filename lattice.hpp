@@ -308,9 +308,14 @@ public: // walls
 	 *  @pre Both min_coord and max_coord are in the domain
 	 */
 	void add_wall(coordinate<int> min_coord, coordinate<int> max_coord);
+
+	void add_wallCylinder(float_type center[2], float_type radius);
 	
 	/** @brief Delete all existing walls */
 	void delete_walls();
+
+	/** @brief Delete all existing solids */
+	void delete_solids();
 	
 public: // file dump
 
@@ -343,7 +348,8 @@ public: // members
 	std::vector<float_type> u;                ///< flow x-velocity data
 	std::vector<float_type> v;                ///< flow y-velocity data
 	std::vector<node> nodes;                  ///< array holding all node objects
-	std::vector<node> wall_nodes;             ///< array holding node objects belonging to a solid wall 
+	std::vector<node> wall_nodes;             ///< array holding node objects belonging to a solid wall
+	std::vector<node> solid_nodes;
 	property_array properties;                ///< properties datastructure (can hold many different properties per node)
 	const bool periodic_x;                    ///< flag whether to use periodicity in x direction
 	const bool periodic_y;                    ///< flag whether to use periodicity in y direction
@@ -404,6 +410,7 @@ lattice::lattice(unsigned int _nx, unsigned int _ny)
 	properties.register_flag_property("fluid");
 	properties.register_flag_property("buffer");
 	properties.register_flag_property("wall");
+	properties.register_flag_property("solid");
 	
 	// set up nodes and properties
 	unsigned int k(0);
@@ -484,6 +491,66 @@ void lattice::add_wall(coordinate<int> min_coord, coordinate<int> max_coord)
 	}
 }
 
+void lattice::add_wallCylinder(float_type center[2], float_type radius)
+{
+	int x_min = floor(center[0] - radius);
+	int x_max = ceil(center[0] + radius);
+	int y_min = floor(center[1] - radius);
+	int y_max = ceil(center[1] + radius);
+
+	coordinate<int> min_coord = {floor(center[0] - radius), floor(center[1] - radius)};
+	coordinate<int> max_coord = {ceil(center[0] + radius), ceil(center[1] + radius)};
+
+	bool flag_solid_min = true;
+	bool flag_solid_max = false;
+
+	for (int j = min_coord.j; j<=max_coord.j; ++j)
+	{
+		flag_solid_min = true;
+		flag_solid_max = false;
+		for (int i=min_coord.i; i<=max_coord.i; ++i)
+		{
+			//If inside circle
+			if (( (i-center[0])*(i-center[0]) + (j-center[1])*(j-center[1])-radius*radius <= 0 ) and ( !get_node(i,j).has_flag_property("solid") ) )
+			{
+				get_node(i,j).set_flag_property("solid");
+				solid_nodes.push_back(get_node(i,j));
+			}
+
+			//If bottom line with contact to solid in y_direction (j+1 is solid)
+			else if ((j == 0) and ( (i-center[0])*(i-center[0]) + (j+1-center[1])*(j+1-center[1])-radius*radius <= 0 ) and ( !get_node(i,j).has_flag_property("wall") ) )
+			{
+				get_node(i,j).set_flag_property("wall");
+				wall_nodes.push_back(get_node(i,j));
+			}
+
+			//if topline with contact to solid in y_direction (j-1 is solid)
+			else if ((j == max_coord.j) and ( (i-center[0])*(i- center[0] ) + (j-1-center[1])*(j-1-center[1])-radius*radius <= 0 ) and ( !get_node(i,j).has_flag_property("wall") ) )
+			{
+				get_node(i,j).set_flag_property("wall");
+				wall_nodes.push_back(get_node(i,j));
+			}
+
+			//If last node in x-direction before solid ( i+1 is solid)
+			else if ((flag_solid_min ) and ( (i+1-center[0])*(i+1-center[0] ) + (j-center[1])*(j-center[1])-radius*radius <= 0 ) and ( !get_node(i,j).has_flag_property("wall") ))
+			{
+				get_node(i,j).set_flag_property("wall");
+				wall_nodes.push_back(get_node(i,j));
+				flag_solid_max = true;
+				flag_solid_min = false;
+			}
+
+			//If first node outside of the solid ( i-1 is  solid)
+			else if (( flag_solid_max ) and ( (i-1-center[0])*(i-1-center[0]) + (j-center[1])*(j-center[1])-radius*radius <= 0 )  and ( !get_node(i,j).has_flag_property("wall") ))
+			{
+				get_node(i,j).set_flag_property("wall");
+				wall_nodes.push_back(get_node(i,j));
+				flag_solid_max = false;
+			}
+		}
+	}
+}
+
 void lattice::delete_walls()
 {
 	for (node n : wall_nodes)
@@ -491,6 +558,16 @@ void lattice::delete_walls()
 		n.unset_flag_property("wall");
 	}
 	wall_nodes.clear();
+
+}
+
+void lattice::delete_solids()
+{
+	for (node n : solid_nodes)
+	{
+		n.unset_flag_property("solid");
+	}
+	solid_nodes.clear();
 }
 
 void lattice::write_fields(std::string file_name)
