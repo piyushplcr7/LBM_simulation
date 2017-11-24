@@ -78,10 +78,10 @@ public: // ctor
 		Cyl_radius = 30.0;
 		Cyl_vel[0] = 0.0;
 		Cyl_vel[1] = 0.0;
-		//l.add_wallCylinder(Cyl_center, Cyl_radius);
+		l.add_wallCylinder(Cyl_center, Cyl_radius);
 
 		//Init B.C.
-		u_inlet = 0.01;
+		u_inlet = 0.0001;
 		rho_inlet = 1;
 
 
@@ -95,7 +95,7 @@ public: // ctor
 
 			for (int i=0; i<static_cast<int>(l.nx); ++i)
 			{	//initializing velocities and density for doubly periodic shear layer	
-				if(!l.get_node(i,j).has_flag_property("solid"))
+				if(l.get_node(i,j).has_flag_property("fluid") or l.get_node(i,j).has_flag_property("wall"))
 				{
 					/*ux=Vmax*( std::tanh(k*( (float)j/(float)l.ny -.25 )) );
 					uy=Vmax*delta*( std::sin(2.*pi*( (float)i/(float)l.nx + .25 ) ) );
@@ -155,21 +155,23 @@ public: // ctor
 		{
 			for (int i=0; i<static_cast<int>(l.nx); ++i)   
 			{	
-				//right top index or increasing index
-				rtindex= l.real_nx*(j+l.buffer_size) + i + l.buffer_size;
-	
-				//left bottom index or decreasing index
-				lbindex= l.real_nx*(l.ny-1-j+l.buffer_size) + l.nx-1 -i + l.buffer_size;
+				if(l.get_node(i,j).has_flag_property("fluid")){
+					//right top index or increasing index
+					rtindex= l.real_nx*(j+l.buffer_size) + i + l.buffer_size;
+		
+					//left bottom index or decreasing index
+					lbindex= l.real_nx*(l.ny-1-j+l.buffer_size) + l.nx-1 -i + l.buffer_size;
 
-				//PUSH ADVECTION!
+					//PUSH ADVECTION!
 
-				for (unsigned int k=0; k<velocity_set().size; ++k)
-					{
-					if (shift[k]>0) //if shift is positive, using decreasing index
-						l.f[k][lbindex+shift[k]]=l.f[k][lbindex];
-					else
-						l.f[k][rtindex+shift[k]]=l.f[k][rtindex];
-					}
+					for (unsigned int k=0; k<velocity_set().size; ++k)
+						{
+						if (shift[k]>0) //if shift is positive, using decreasing index
+							l.f[k][lbindex+shift[k]]=l.f[k][lbindex];
+						else
+							l.f[k][rtindex+shift[k]]=l.f[k][rtindex];
+						}
+				}
 			}
 		}
 
@@ -229,7 +231,7 @@ public: // ctor
 
 		//Set non equilibrium pressure tensor
 		Pneq[0][0] = - l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta*(du_x);
-		Pneq[1][0] = -l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta*(du_y + dv_x);
+		Pneq[1][0] = -l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta/2*(du_y + dv_x);
 		Pneq[0][1] = Pneq[1][0];
 		Pneq[1][1] = - l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta*(dv_y);
 
@@ -248,7 +250,7 @@ public: // ctor
 
 		//Set non equilibrium pressure tensor
 		Pneq[0][0] = - l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta*(du_x);
-		Pneq[1][0] = -l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta*(du_y + dv_x);
+		Pneq[1][0] = -l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/2/beta*(du_y + dv_x);
 		Pneq[0][1] = Pneq[1][0];
 		Pneq[1][1] = - l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta*(dv_y);
 
@@ -425,42 +427,88 @@ public: // ctor
 
 	/** @brief Apply Boundary Conditions on top wall  */
 	void top_wall_bc(){
-		//Free Slip, starts at i=1!
+		
 		int j=l.ny - 1;
-		#pragma omp parallel for
-		for (int i=1; i<static_cast<int>(l.nx); ++i)  
-		//iteration over the top and bottom buffers (filled due to up and down avection)
-		{
-			//south direction
-			l.get_node(i,j).f(4)=l.get_node(i,j+1).f(2); 
-			//south east 
-			l.get_node(i,j).f(8)=l.get_node(i-1,j+1).f(5);		
-			//south west
-			l.get_node(i,j).f(7)=l.get_node(i+1,j+1).f(6);	
+		bool flag_top_wall = false;
+
+		//Wall, starts at i=1!
+		if(flag_top_wall){
+			#pragma omp parallel for
+			for (int i=1; i<static_cast<int>(l.nx)-1; ++i)  
+			//iteration over the top buffers (filled due to up and down avection)
+			{
+				//south direction
+				l.get_node(i,j).f(4)=l.get_node(i,j+1).f(2); 
+				//south east 
+				l.get_node(i,j).f(8)=l.get_node(i+1,j+1).f(5);		
+				//south west
+				l.get_node(i,j).f(7)=l.get_node(i-1,j+1).f(6);
+			}
+		}
+		//Free Slip
+		else{
+			#pragma omp parallel for
+			for (int i=1; i<static_cast<int>(l.nx)-1; ++i)  
+			//iteration over the top buffers (filled due to up and down avection)
+			{
+				//south direction
+				l.get_node(i,j).f(4)=l.get_node(i,j+1).f(2); 
+				//south east 
+				l.get_node(i+1,j).f(8)=l.get_node(i+1,j+1).f(5);		
+				//south west
+				l.get_node(i-1,j).f(7)=l.get_node(i-1,j+1).f(6);
+			}
 		}
 
 	}
 
 	/** @brief Apply Boundary Conditions on bottom wall  */
 	void bottom_wall_bc(){
-		//Free Slip, starts at i = 1!
+
 		int j=0;
-		#pragma omp parallel for
-		for (int i=1; i<static_cast<int>(l.nx); ++i)  
-		//iteration over the top and bottom buffers (filled due to up and down avection)
-		{
-			//south direction
-			l.get_node(i,j).f(2)=l.get_node(i,j-1).f(4); 
-			//south east 
-			l.get_node(i,j).f(5)=l.get_node(i+1,j-1).f(8);		
-			//south west
-			l.get_node(i,j).f(6)=l.get_node(i-1,j-1).f(7);	
+		bool flag_bottom_wall = false;
+		//Wall, starts at i = 1!
+		if(flag_bottom_wall){
+			#pragma omp parallel for
+			for (int i=1; i<static_cast<int>(l.nx); ++i)  
+			//iteration over bottom buffers (filled due to up and down avection)
+			{
+				//south direction
+				l.get_node(i,j).f(2)=l.get_node(i,j-1).f(4); 
+				//south east 
+				l.get_node(i,j).f(5)=l.get_node(i+1,j-1).f(8);		
+				//south west
+				l.get_node(i,j).f(6)=l.get_node(i-1,j-1).f(7);	
+			}
 		}
+		//FreeSlip
+		else{
+			#pragma omp parallel for
+			for (int i=1; i<static_cast<int>(l.nx); ++i)  
+			//iteration over bottom buffers (filled due to up and down avection)
+			{
+				//south direction
+				l.get_node(i,j).f(2)=l.get_node(i,j-1).f(4); 
+				//south east 
+				l.get_node(i+1,j).f(5)=l.get_node(i+1,j-1).f(8);		
+				//south west
+				l.get_node(i-1,j).f(6)=l.get_node(i-1,j-1).f(7);	
+			}
+		}
+
+
 	}
 
 	/** @brief Apply Boundary Conditions on left wall  */
 	void left_wall_bc(){
 		//Inlet Conditions
+		unsigned int runUptime = 100;
+		float_type u_x;
+
+		if(time < runUptime)
+			u_x = time * u_inlet / runUptime;
+		else
+			u_x = u_inlet;
 
 		int i = 0;
 		float_type uy = 0;
@@ -471,7 +519,7 @@ public: // ctor
 			//initialize populations, rho initially 1 for doubly periodic shear layer
 			for (unsigned int k=0; k<velocity_set().size; ++k)
 			{
-				l.get_node(i,j).f(k)=rho_inlet*velocity_set().W[k]*(2.-sqrt(1.+3.*u_inlet*u_inlet))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*u_inlet+sqrt(1.+3.*u_inlet*u_inlet))/(1.-u_inlet) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
+				l.get_node(i,j).f(k)=rho_inlet*velocity_set().W[k]*(2.-sqrt(1.+3.*u_x*u_x))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*u_x+sqrt(1.+3.*u_x*u_x))/(1.-u_x) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
 			}
 		}
 	}
@@ -479,6 +527,14 @@ public: // ctor
 	/** @brief Apply Boundary Conditions on right wall  */
 	void right_wall(){
 		//No Boundary Condition
+		unsigned int i = l.nx -1;
+
+		for(int j = 1; j <static_cast<int>(l.ny)-1 ; ++j){
+			l.get_node(i,j).f(3) = l.get_node(i-1,j).f(3);
+			l.get_node(i,j).f(6) = l.get_node(i-1,j+1).f(6);
+			l.get_node(i,j).f(7) = l.get_node(i-1,j-1).f(7);
+
+		}
 	}
 
 	/** @brief collide the populations */
@@ -495,7 +551,7 @@ public: // ctor
 		{
 			for (int i=0; i<static_cast<int>(l.nx); ++i)
 			{	//calculation of rho, ux and uy for the node
-				if(l.get_node(i,j).has_flag_property("fluid"))
+				if(l.get_node(i,j).has_flag_property("fluid") or l.get_node(i,j).has_flag_property("wall") )
 				{
 					rho=0.,ux=0.,uy=0.;
 					for (unsigned int temp=0; temp<velocity_set().size; ++temp)
