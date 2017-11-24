@@ -73,12 +73,17 @@ public: // ctor
 		double Kx=2*pi/l.nx,Ky=2*pi/l.ny,K=sqrt(pow(Kx,2)+pow(Ky,2)),Ma=Vmax*sqrt(3);*/
 
 		//Initialize Cyclinder
-		Cyl_center[0] = 30.0;
-		Cyl_center[1] = 30.0;
-		Cyl_radius = 5.0;
+		Cyl_center[0] = 75.0;
+		Cyl_center[1] = 75.0;
+		Cyl_radius = 30.0;
 		Cyl_vel[0] = 0.0;
 		Cyl_vel[1] = 0.0;
-		l.add_wallCylinder(Cyl_center, Cyl_radius);
+		//l.add_wallCylinder(Cyl_center, Cyl_radius);
+
+		//Init B.C.
+		u_inlet = 0.01;
+		rho_inlet = 1;
+
 
 		#pragma omp parallel for
 		for (int j=0; j<static_cast<int>(l.ny); ++j)
@@ -86,7 +91,7 @@ public: // ctor
 			const float_type pi(std::acos(-1.0));
 			double ux,uy,rho;
 //			double k=80.,delta=0.05; //for doubly periodic shear layer
-			double Kx=2*pi/l.nx,Ky=2*pi/l.ny,K=sqrt(pow(Kx,2)+pow(Ky,2)),Ma=Vmax*sqrt(3);
+			double Kx =2*pi/l.nx,Ky=2*pi/l.ny,K=sqrt(pow(Kx,2)+pow(Ky,2)),Ma=Vmax*sqrt(3);
 
 			for (int i=0; i<static_cast<int>(l.nx); ++i)
 			{	//initializing velocities and density for doubly periodic shear layer	
@@ -103,11 +108,19 @@ public: // ctor
 						l.get_node(i,j).u()  = ux;
 					}*/
 
-					//initialization for 2d taylor green vortex flow
+					// //initialization for 2d taylor green vortex flow
 
-					ux=-Vmax*Ky/K*sin(Ky*j)*cos(Kx*i);
-					uy=Vmax*Kx/K*sin(Kx*i)*cos(Ky*j);
-					rho=1-pow(Ma/K,2)/2*(pow(Ky,2)*cos(2*Kx*i)+pow(Kx,2)*cos(2*Ky*j));
+					// ux=-Vmax*Ky/K*sin(Ky*j)*cos(Kx*i);
+					// uy=Vmax*Kx/K*sin(Kx*i)*cos(Ky*j);
+					// rho=1-pow(Ma/K,2)/2*(pow(Ky,2)*cos(2*Kx*i)+pow(Kx,2)*cos(2*Ky*j));
+
+					//Initialize flow around Cylinder
+					ux = 0.0;
+					uy = 0.0;
+
+					rho = 1;
+
+
 					l.get_node(i,j).u()  = ux;
 					l.get_node(i,j).v()  = uy;
 					l.get_node(i,j).rho() = rho;
@@ -117,6 +130,12 @@ public: // ctor
 						l.get_node(i,j).f(k)=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
 					}
 				}
+				//Initialize inside the solid
+				if(l.get_node(i,j).has_flag_property("solid")){
+					l.get_node(i,j).u()  = Cyl_vel[0];
+					l.get_node(i,j).v()  = Cyl_vel[1];
+					l.get_node(i,j).rho() = 1.0;
+				}		
 			}
 		}
 	}
@@ -154,7 +173,206 @@ public: // ctor
 			}
 		}
 
-		//using the buffers to implement periodic boundary conditions
+		
+	}
+
+	/**  @brief calculate smaller root of quadratic function */
+	inline float_type solve_quadratic(float_type a, float_type b, float_type c){
+		return -b/2/a - sqrt(b*b-4*a*c)/2/a;
+	}
+
+	/**  @brief calculate fraction of solid from point 1 to point 2 */
+	float_type get_qi(int x1, int y1, int x2, int y2){
+		//calc distance c_i
+		float_type c_i = sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
+
+		float_type dx = x2-x1;
+		float_type dy = y2-y1;
+
+		//calc x_w,i
+		//find root of quadratic equation
+		//((x1+t*dx -l.center[0])*(x1+t*dx -l.center[0]) + (y1+t*dy -l.center[1])*(y1+t*dy -l.center[1])-l.radius*l.radius == 0)
+		float_type a = (dx*dx + dy*dy);
+		float_type b = dx* (x1-Cyl_center[0]) + dy * (y1 - Cyl_center[1]);
+		float_type c = (x1-Cyl_center[0])*(x1-Cyl_center[0]) + (y1-Cyl_center[1])*(y1-Cyl_center[1]) - Cyl_radius*Cyl_radius;
+		float_type t = solve_quadratic(a,b,c);
+
+
+		float_type q_i = sqrt(t*dx *t*dx + t*dy *t*dy)/c_i;
+
+		return q_i;
+
+	}
+	/**  @brief Calculate Eq Presure tensor */
+	void calc_Peq(int i, int j, float_type (&Peq)[2][2]){
+		
+		//Set non equilibrium pressure tensor
+		Peq[0][0] = l.get_node(i,j).rho()*(velocity_set().cs*velocity_set().cs + l.get_node(i,j).u()* l.get_node(i,j).u()) ;
+		Peq[1][0] = l.get_node(i,j).rho()*( l.get_node(i,j).u()* l.get_node(i,j).v());
+		Peq[0][1] = Peq[1][0];
+		Peq[1][1] = l.get_node(i,j).rho()*(velocity_set().cs*velocity_set().cs + l.get_node(i,j).v()* l.get_node(i,j).v());
+		return;
+
+	}
+
+
+	/**  @brief Calculate NonEq for with direct influence of Boundary */
+	void calc_Pneq(int i, int j, bool dir_solid[9], float_type q_i[9], float_type (&Pneq)[2][2]){
+
+		//calculate velocity gradients
+		float_type du_x = (l.get_node(i+1,j).u()-l.get_node(i-1,j).u())/(q_i[3] + q_i[1]);
+		float_type dv_x = (l.get_node(i+1,j).v()-l.get_node(i-1,j).v())/(q_i[3] + q_i[1]);
+
+		float_type du_y = (l.get_node(i+1,j).u()-l.get_node(i-1,j).u())/(q_i[4] + q_i[2]);
+		float_type dv_y = (l.get_node(i,j+1).v()-l.get_node(i,j-1).v())/(q_i[4] + q_i[2]);
+		
+
+		//Set non equilibrium pressure tensor
+		Pneq[0][0] = - l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta*(du_x);
+		Pneq[1][0] = -l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta*(du_y + dv_x);
+		Pneq[0][1] = Pneq[1][0];
+		Pneq[1][1] = - l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta*(dv_y);
+
+		return;
+	}
+
+	/**  @brief Calculate NonEq for without influence of Boundary */
+	void calc_Pneq(int i, int j, float_type (&Pneq)[2][2]){
+
+		//calculate velocity gradients with central difference
+		float_type du_x = (l.get_node(i+1,j).u()-l.get_node(i-1,j).u())/2;
+		float_type du_y = (l.get_node(i+1,j).u()-l.get_node(i-1,j).u())/2;
+		float_type dv_x = (l.get_node(i+1,j).v()-l.get_node(i-1,j).v())/2;
+		float_type dv_y = (l.get_node(i,j+1).v()-l.get_node(i,j-1).v())/2;
+
+
+		//Set non equilibrium pressure tensor
+		Pneq[0][0] = - l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta*(du_x);
+		Pneq[1][0] = -l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta*(du_y + dv_x);
+		Pneq[0][1] = Pneq[1][0];
+		Pneq[1][1] = - l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta*(dv_y);
+
+		return;
+	}
+
+	/**  @brief apply wall boundary conditions */
+	void curved_wall_bc()
+	{
+		
+		//Curved Wall
+		#pragma omp parallel for
+		for (unsigned int i=0; i<l.wall_nodes.size(); ++i)
+		{
+			bool dir_solid[9] = {false, false, false, false, false, false, false, false, false};
+
+
+			unsigned int x_i = l.wall_nodes[i].coord.i;
+			unsigned int y_j = l.wall_nodes[i].coord.j;
+
+			//Get direction to solid according to the c-directions
+			for( int j = 1; j < sizeof(dir_solid); ++j){
+				if (l.get_node(x_i+velocity_set().c[0][j],y_j+velocity_set().c[1][j]).has_flag_property("solid") )
+					dir_solid[j] = true;
+			}
+
+			//Get amount of contacts to solid
+			std::vector<int> i_d;
+			for (int j=0; j < sizeof(dir_solid); ++j)
+			{
+				if (dir_solid[j]){
+					i_d.push_back(j);
+				}
+
+				//Advect the direction away from Solid
+				else{
+					l.get_node(x_i+velocity_set().c[0][j], y_j + velocity_set().c[1][j]).f(j) = l.get_node(x_i, y_j).f(j);
+				}
+			}
+
+			//Bounce back of population in direction of solid
+
+			//!!!!!!!!!!
+			//somehow ensure the advection and bounce back simultaneously!!!!!!
+			//!!!!!!!!!!
+
+
+			//utgt
+			float_type utgt[2] = {0,0};
+			float_type rho_bb = 0;
+			float_type rho_s = 0;
+			float_type rho_0 = 1;
+			float_type q_i[9] = {1,1,1,1,1,1,1,1,1};
+
+
+			for (int j = 0; j < i_d.size(); ++j)
+			{
+				//Velocities away from the solid
+				int c_x = -velocity_set().c[0][i_d[j]];
+				int c_y = -velocity_set().c[1][i_d[j]];
+
+				//get q_i
+				q_i[i_d[j]] = get_qi(x_i, y_j, x_i - c_x, y_j - c_y);
+
+				//get u_f,i
+				float_type u_fi[2] = { l.get_node(x_i+c_x,y_j+c_y).u(), l.get_node(x_i+c_x,y_j+c_y).v()};
+
+				//calc utgt part
+				utgt[0] += (q_i[i_d[j]]* u_fi[0] + Cyl_vel[0])/(1+q_i[i_d[j]])/i_d.size();
+				utgt[1] += (q_i[i_d[j]]* u_fi[1] + Cyl_vel[1])/(1+q_i[i_d[j]])/i_d.size();
+
+				float_type u_w_i = Cyl_vel[0];
+				float_type v_w_i = Cyl_vel[1];
+				
+				//get rho_s
+				rho_s += 6*rho_0*(velocity_set().W[i_d[j]]*velocity_set().c[0][i_d[j]]*u_w_i +velocity_set().W[i_d[j]]*velocity_set().c[1][i_d[j]]*v_w_i);
+				
+				//Bounce back
+				l.get_node(x_i+c_x, y_j+c_y).f(j) = l.get_node(x_i, y_j).f(j);
+				
+			}
+
+			for(int j = 0; j <sizeof(dir_solid); ++j){
+				rho_bb += l.get_node(x_i, y_j).f(j);
+			}
+			
+			//rho_tgt
+			float_type rho_tgt = rho_bb + rho_s;
+
+			//Calculate missing populations
+			float_type Peq[2][2];
+			calc_Peq(x_i, y_j, Peq);
+			float_type Pneq[2][2];
+			calc_Pneq(x_i, y_j, dir_solid, q_i, Pneq);
+			float_type f_new;
+
+			std::cout << "Peq: " << Peq[0][0] << " /" << Peq[0][1] << " /" << Peq[1][0] << " /" << Peq[1][1] << " /" << std::endl;  
+
+			for (int j = 0; j < i_d.size(); ++j)
+			{
+				//Reset population with first two parts of grads' approximation
+				f_new = velocity_set().W[i_d[j]]*(l.get_node(x_i, y_j).rho()*(1 + (velocity_set().c[0][i_d[j]]*l.get_node(x_i, y_j).u() +velocity_set().c[1][i_d[j]]*l.get_node(x_i, y_j).v())/velocity_set().cs/velocity_set().cs));
+				
+				//Update with Tensor part and summation over alpha and Beta
+				for (int alpha = 0; alpha < 2; ++alpha){
+					for( int beta = 0; beta < 2; ++beta){
+						if( alpha == beta)
+							f_new +=  1/2/pow(velocity_set().cs,4)*((Pneq[alpha][beta]+Peq[alpha][beta]-l.get_node(x_i, y_j).rho()*velocity_set().cs*velocity_set().cs)*(velocity_set().c[alpha][i_d[j]]*velocity_set().c[beta][i_d[j]] - velocity_set().cs*velocity_set().cs ));
+						else
+							f_new +=  1/2/pow(velocity_set().cs,4)*((Pneq[alpha][beta]+Peq[alpha][beta])*(velocity_set().c[alpha][i_d[j]]*velocity_set().c[beta][i_d[j]] )); 
+					}
+				}
+				l.get_node(x_i, y_j).f(i_d[j]) = f_new;
+				if (!std::isnan(f_new))
+					std::cout << "F_ new_ missing: " << f_new << std::endl;
+			}
+		}
+	}
+	
+	
+
+
+	void periodic_bc(){
+	//using the buffers to implement periodic boundary conditions
 		#pragma omp parallel for
 		for (int i=0; i<static_cast<int>(l.nx); ++i)  
 		//iteration over the top and bottom buffers (filled due to up and down avection)
@@ -204,47 +422,65 @@ public: // ctor
 		//northwest corner(buffer) mapped to southeast corner of the domain
 		l.get_node(l.nx-1,0).f(6)=l.get_node(-1,l.ny).f(6); 
 	}
-	
-	/**  @brief apply wall boundary conditions */
-	void wall_bc()
-	{
+
+	/** @brief Apply Boundary Conditions on top wall  */
+	void top_wall_bc(){
+		//Free Slip, starts at i=1!
+		int j=l.ny - 1;
 		#pragma omp parallel for
-		for (unsigned int i=0; i<l.wall_nodes.size(); ++i)
+		for (int i=1; i<static_cast<int>(l.nx); ++i)  
+		//iteration over the top and bottom buffers (filled due to up and down avection)
 		{
-			// **************************
-			// * fill in your code here *
-			// **************************
-
-			bool dir_solid[9] = {false, false, false, false, false, false, false, false, false};
-
-
-			unsigned int x_i = l.wall_nodes[i].coord.i;
-			unsigned int y_j = l.wall_nodes[i].coord.j;
-
-			//Get direction to solid according to the c-directions
-			if (l.get_node(x_i+1,y_j).has_flag_property("solid") )
-				dir_solid[1] = true;
-			if (l.get_node(x_i,y_j+1).has_flag_property("solid") )
-				dir_solid[2] = true;
-			if ( l.get_node(x_i-1,y_j).has_flag_property("solid") )
-				dir_solid[3] = true;
-			if ( l.get_node(x_i,y_j-1).has_flag_property("solid") )
-				dir_solid[4] = true;
-			if ( l.get_node(x_i+1,y_j+1).has_flag_property("solid") )
-				dir_solid[5] = true;
-			if ( l.get_node(x_i-1,y_j+1).has_flag_property("solid") )
-				dir_solid[6] = true;
-			if ( l.get_node(x_i-1,y_j-1).has_flag_property("solid") )
-				dir_solid[7] = true;
-			if ( l.get_node(x_i+1,y_j-1).has_flag_property("solid") )
-				dir_solid[8] = true;
-
+			//south direction
+			l.get_node(i,j).f(4)=l.get_node(i,j+1).f(2); 
+			//south east 
+			l.get_node(i,j).f(8)=l.get_node(i-1,j+1).f(5);		
+			//south west
+			l.get_node(i,j).f(7)=l.get_node(i+1,j+1).f(6);	
 		}
 
-
-
 	}
-	
+
+	/** @brief Apply Boundary Conditions on bottom wall  */
+	void bottom_wall_bc(){
+		//Free Slip, starts at i = 1!
+		int j=0;
+		#pragma omp parallel for
+		for (int i=1; i<static_cast<int>(l.nx); ++i)  
+		//iteration over the top and bottom buffers (filled due to up and down avection)
+		{
+			//south direction
+			l.get_node(i,j).f(2)=l.get_node(i,j-1).f(4); 
+			//south east 
+			l.get_node(i,j).f(5)=l.get_node(i+1,j-1).f(8);		
+			//south west
+			l.get_node(i,j).f(6)=l.get_node(i-1,j-1).f(7);	
+		}
+	}
+
+	/** @brief Apply Boundary Conditions on left wall  */
+	void left_wall_bc(){
+		//Inlet Conditions
+
+		int i = 0;
+		float_type uy = 0;
+		for(int j=0; j <static_cast<int>(l.ny) ; ++j){
+			l.get_node(i,j).u()  = u_inlet;
+			l.get_node(i,j).v()  = uy;
+			l.get_node(i,j).rho() = rho_inlet;
+			//initialize populations, rho initially 1 for doubly periodic shear layer
+			for (unsigned int k=0; k<velocity_set().size; ++k)
+			{
+				l.get_node(i,j).f(k)=rho_inlet*velocity_set().W[k]*(2.-sqrt(1.+3.*u_inlet*u_inlet))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*u_inlet+sqrt(1.+3.*u_inlet*u_inlet))/(1.-u_inlet) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
+			}
+		}
+	}
+
+	/** @brief Apply Boundary Conditions on right wall  */
+	void right_wall(){
+		//No Boundary Condition
+	}
+
 	/** @brief collide the populations */
 	void collide()
 	{
@@ -284,9 +520,8 @@ public: // ctor
 				}
 			}
 		}
-		
-		
 	}
+
 	/** @brief Adaption of the Cylinder position  */
 	void Adapt_Cyl()
 	{
@@ -313,7 +548,17 @@ public: // ctor
 		l.add_wallCylinder(Cyl_center, Cyl_radius)
 		*/
 	}
+	/** @brief Apply all Boundary Conditions */	
+	void wall_bc()
+	{
+		//curved_wall_bc();
+		top_wall_bc();
+		bottom_wall_bc();
+		left_wall_bc();
+		right_wall();
 
+		//periodic_bc();
+	}
 	
 	/** @brief LB step */
 	void step()
@@ -373,6 +618,8 @@ public: // members
 	float_type Cyl_center[2];
 	float_type Cyl_radius;
 	float_type Cyl_vel[2];
+	float_type rho_inlet;
+	float_type u_inlet;
 };
 
 } // lb

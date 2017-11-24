@@ -493,11 +493,11 @@ void lattice::add_wall(coordinate<int> min_coord, coordinate<int> max_coord)
 
 void lattice::add_wallCylinder(float_type center[2], float_type radius)
 {
-	int x_min = floor(center[0] - radius);
+	/*int x_min = floor(center[0] - radius);
 	int x_max = ceil(center[0] + radius);
 	int y_min = floor(center[1] - radius);
-	int y_max = ceil(center[1] + radius);
-
+	int y_max = ceil(center[1] + radius);*/
+	
 	coordinate<int> min_coord = {floor(center[0] - radius), floor(center[1] - radius)};
 	coordinate<int> max_coord = {ceil(center[0] + radius), ceil(center[1] + radius)};
 
@@ -510,44 +510,119 @@ void lattice::add_wallCylinder(float_type center[2], float_type radius)
 		flag_solid_max = false;
 		for (int i=min_coord.i; i<=max_coord.i; ++i)
 		{
-			//If inside circle
-			if (( (i-center[0])*(i-center[0]) + (j-center[1])*(j-center[1])-radius*radius <= 0 ) and ( !get_node(i,j).has_flag_property("solid") ) )
+			if ( (!get_node(i,j).has_flag_property("solid")) or (!get_node(i,j).has_flag_property("wall")) )
 			{
-				get_node(i,j).set_flag_property("solid");
-				solid_nodes.push_back(get_node(i,j));
-			}
 
-			//If bottom line with contact to solid in y_direction (j+1 is solid)
-			else if ((j == 0) and ( (i-center[0])*(i-center[0]) + (j+1-center[1])*(j+1-center[1])-radius*radius <= 0 ) and ( !get_node(i,j).has_flag_property("wall") ) )
-			{
-				get_node(i,j).set_flag_property("wall");
-				wall_nodes.push_back(get_node(i,j));
-			}
+				//If inside circle
+				if ( (i-center[0])*(i-center[0]) + (j-center[1])*(j-center[1])-radius*radius <= 0 )
+				{
+					get_node(i,j).set_flag_property("solid");
+					solid_nodes.push_back(get_node(i,j));
+				}
 
-			//if topline with contact to solid in y_direction (j-1 is solid)
-			else if ((j == max_coord.j) and ( (i-center[0])*(i- center[0] ) + (j-1-center[1])*(j-1-center[1])-radius*radius <= 0 ) and ( !get_node(i,j).has_flag_property("wall") ) )
-			{
-				get_node(i,j).set_flag_property("wall");
-				wall_nodes.push_back(get_node(i,j));
-			}
+				//If bottom line with contact to solid in y_direction (j+1 is solid)
+				else if ((j == 0) and ( (i-center[0])*(i-center[0]) + (j+1-center[1])*(j+1-center[1])-radius*radius <= 0 ) )
+				{
+					get_node(i,j).set_flag_property("wall");
+					wall_nodes.push_back(get_node(i,j));
+					if ( !get_node(i,j+1).has_flag_property("solid") )
+					{
+						get_node(i,j+1).set_flag_property("solid");
+						solid_nodes.push_back(get_node(i,j+1));
+					}
+				}
 
-			//If last node in x-direction before solid ( i+1 is solid)
-			else if ((flag_solid_min ) and ( (i+1-center[0])*(i+1-center[0] ) + (j-center[1])*(j-center[1])-radius*radius <= 0 ) and ( !get_node(i,j).has_flag_property("wall") ))
-			{
-				get_node(i,j).set_flag_property("wall");
-				wall_nodes.push_back(get_node(i,j));
-				flag_solid_max = true;
-				flag_solid_min = false;
-			}
+				//if topline with contact to solid in y_direction (j-1 is solid)
+				else if ((j == max_coord.j) and ( (i-center[0])*(i- center[0] ) + (j-1-center[1])*(j-1-center[1])-radius*radius <= 0 ) )
+				{
+					get_node(i,j).set_flag_property("wall");
+					wall_nodes.push_back(get_node(i,j));
+					if ( !get_node(i,j-1).has_flag_property("solid") )
+					{
+						get_node(i,j-1).set_flag_property("solid");
+						solid_nodes.push_back(get_node(i,j-1));
+					}
+				}
 
-			//If first node outside of the solid ( i-1 is  solid)
-			else if (( flag_solid_max ) and ( (i-1-center[0])*(i-1-center[0]) + (j-center[1])*(j-center[1])-radius*radius <= 0 )  and ( !get_node(i,j).has_flag_property("wall") ))
-			{
-				get_node(i,j).set_flag_property("wall");
-				wall_nodes.push_back(get_node(i,j));
-				flag_solid_max = false;
+				//If last node in x-direction before solid ( i+1 is solid)
+				else if ( (flag_solid_min ) and ( (i+1-center[0])*(i+1-center[0] ) + (j-center[1])*(j-center[1])-radius*radius <= 0 ) )
+				{
+					get_node(i,j).set_flag_property("wall");
+					wall_nodes.push_back(get_node(i,j));
+					flag_solid_max = true;
+					flag_solid_min = false;
+					if ( !get_node(i+1,j).has_flag_property("solid") )
+					{
+						get_node(i+1,j).set_flag_property("solid");
+						solid_nodes.push_back(get_node(i+1,j));
+					}
+				}
+
+				//If first node outside of the solid ( i-1 is  solid)
+				else if ( ( flag_solid_max ) and ( (i-1-center[0])*(i-1-center[0]) + (j-center[1])*(j-center[1])-radius*radius <= 0 )  )
+				{
+					get_node(i,j).set_flag_property("wall");
+					wall_nodes.push_back(get_node(i,j));
+					flag_solid_max = false;
+					if ( !get_node(i-1,j).has_flag_property("solid") )
+					{
+						get_node(i-1,j).set_flag_property("solid");
+						solid_nodes.push_back(get_node(i-1,j));
+					}
+				}
+
+				//If first diagonal node outside of the solid ( i+1, j+1 is  solid)
+				else if ( (i+1-center[0])*(i+1-center[0]) + (j+1-center[1])*(j+1-center[1])-radius*radius <= 0 )
+				{
+					get_node(i,j).set_flag_property("wall");
+					wall_nodes.push_back(get_node(i,j));
+					if ( !get_node(i+1,j+1).has_flag_property("solid") )
+					{
+						get_node(i+1,j+1).set_flag_property("solid");
+						solid_nodes.push_back(get_node(i+1,j+1));
+					}
+				}
+				
+				//If first diagonal node outside of the solid ( i+1, j-1 is  solid)
+				else if ( (i+1-center[0])*(i+1-center[0]) + (j-1-center[1])*(j-1-center[1])-radius*radius <= 0 )
+				{
+					get_node(i,j).set_flag_property("wall");
+					wall_nodes.push_back(get_node(i,j));
+					if ( !get_node(i+1,j-1).has_flag_property("solid") )
+					{
+						get_node(i+1,j-1).set_flag_property("solid");
+						solid_nodes.push_back(get_node(i+1,j-1));
+					}
+				}
+
+				//If first diagonal node outside of the solid ( i-1, j+1 is  solid)
+				else if ( (i-1-center[0])*(i-1-center[0]) + (j+1-center[1])*(j+1-center[1])-radius*radius <= 0 )
+				{
+					get_node(i,j).set_flag_property("wall");
+					wall_nodes.push_back(get_node(i,j));
+					if ( !get_node(i-1,j+1).has_flag_property("solid") )
+					{
+						get_node(i-1,j+1).set_flag_property("solid");
+						solid_nodes.push_back(get_node(i-1,j+1));
+					}
+				}
+
+				//If first diagonal node outside of the solid ( i-1, j-1 is  solid)
+				else if ( (i-1-center[0])*(i-1-center[0]) + (j-1-center[1])*(j-1-center[1])-radius*radius <= 0 )
+				{
+					get_node(i,j).set_flag_property("wall");
+					wall_nodes.push_back(get_node(i,j));
+					if ( !get_node(i-1,j-1).has_flag_property("solid") )
+					{
+						get_node(i-1,j-1).set_flag_property("solid");
+						solid_nodes.push_back(get_node(i-1,j-1));
+					}
+				}
+
 			}
+			
 		}
+
 	}
 }
 

@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
 {
 	omp_set_num_threads(std::max(omp_get_max_threads(),omp_get_num_procs()));
 	
-	lb::simulation* sim = new lb::simulation(150,150,30000,0.1);
+	lb::simulation* sim = new lb::simulation(500,150,30000,0.1);
 	sim->initialize();
 	std::cout << *sim << std::endl;
 
