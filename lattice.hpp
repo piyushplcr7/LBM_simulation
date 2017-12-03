@@ -1,4 +1,4 @@
-/** 
+/**
  *  @file
  *  @author Fabian Bösch
  *  @brief lattice and node
@@ -19,8 +19,8 @@ class lattice; // forward declaration
 
 /**
  *  @brief Node representing one lattice site.
- * 
- *  Easy access to bundled quantities and properties (works as proxy to 
+ *
+ *  Easy access to bundled quantities and properties (works as proxy to
  *  the lattice class).
  */
 struct node
@@ -29,8 +29,8 @@ public: // ctors
 
 	/** @brief Default constructor */
 	node() {}
-	
-	/** 
+
+	/**
 	 *  @brief Construct from lattice and position
 	 *  @param[in] lat Pointer to the lattice
 	 *  @param[in] i   x coordinate
@@ -38,11 +38,11 @@ public: // ctors
 	 *  @pre coordinates are in domain
 	 */
 	node(lattice* lat, int i, int j);
-	
+
 	node(const node&) = default;
-	
+
 public: // init
-	
+
 	/**
 	 *  @brief Set lattice and position.
 	 *  @param[in] lat Pointer to lattice
@@ -51,63 +51,63 @@ public: // init
 	 *  @pre coordinates are in domain
 	 */
 	void set(lattice* lat, int i, int j);
-	
+
 public: // access populations and macroscopic quantities
 
-	/** 
+	/**
 	 *  @brief Get population.
-	 *  @param i Population index 
-	 *  @return Value of distribution function 
+	 *  @param i Population index
+	 *  @return Value of distribution function
 	 *  @pre population index exists
 	 */
 	inline float_type f(unsigned int i) const;
-	
-	/** 
+
+	/**
 	 *  @brief Get/set population.
-	 *  @param i Population index 
-	 *  @return Reference to value of distribution function 
+	 *  @param i Population index
+	 *  @return Reference to value of distribution function
 	 *  @pre population index exists
 	 */
 	inline float_type& f(unsigned int i);
-	
-	/** 
+
+	/**
 	 *  @brief Get density.
 	 *  @return Local density
 	 */
 	inline float_type rho() const;
-	
-	/** 
+
+	/**
 	 *  @brief Get/set density.
 	 *  @return Reference to local density
 	 */
 	inline float_type& rho();
-	
-	/** 
+
+	/**
 	 *  @brief Get x-velocity.
 	 *  @return Local flow velocity in x direction
 	 */
 	inline float_type u() const;
-	
-	/** 
+
+	/**
 	 *  @brief Get/set x-velocity.
 	 *  @return Reference to local flow velocity in x direction
 	 */
 	inline float_type& u();
-	
-	/** 
+
+	/**
 	 *  @brief Get y-velocity.
 	 *  @return Local flow velocity in y direction
 	 */
 	inline float_type v() const;
-	
-	/** 
+
+	/**
 	 *  @brief Get/set y-velocity.
 	 *  @return Reference to local flow velocity in y direction
 	 */
 	inline float_type& v();
 
 public: // query and access properties
-	
+
 	/**
 	 *  @brief Query for flag property.
 	 *  Query whether a flag is set for the node.
@@ -115,7 +115,7 @@ public: // query and access properties
 	 *  @return True if flag is set, otherwise false
 	 */
 	inline bool has_flag_property(std::string name) const;
-	
+
 	/**
 	 *  @brief Set a flag
 	 *  Set the flag "name" to true
@@ -123,7 +123,7 @@ public: // query and access properties
 	 *  @return True if flag exists, otherwise false
 	 */
 	inline bool set_flag_property(std::string name);
-	
+
 	/**
 	 *  @brief Unset a flag
 	 *  Set the flag "name" to false
@@ -131,7 +131,7 @@ public: // query and access properties
 	 *  @return True if flag exists, otherwise false
 	 */
 	inline bool unset_flag_property(std::string name);
-	
+
 	/**
 	 *  @brief Query for data property.
 	 *  Query whether data property (object) is stored for the node.
@@ -139,7 +139,7 @@ public: // query and access properties
 	 *  @return True if thre is such a data property, otherwise false
 	 */
 	inline bool has_data_property(std::string name) const;
-	
+
 	/**
 	 *  @brief Store a data property
 	 *  @tparam T Type of the data property
@@ -149,14 +149,14 @@ public: // query and access properties
 	 */
 	template<typename T>
 	inline bool set_data_property(std::string name, const T& property);
-	
+
 	/**
 	 *  @brief Delete a data property
 	 *  @param[in] name Data property name
 	 *  @return True if data property exists, otherwise false
 	 */
 	bool unset_data_property(std::string name);
-	
+
 	/**
 	 *  @brief Get data property
 	 *  @tparam T Type of the data property
@@ -165,7 +165,7 @@ public: // query and access properties
 	 */
 	template <typename T>
 	T& get_data_property(std::string name);
-	
+
 	/**
 	 *  @brief Get data property
 	 *  @tparam T Type of the data property
@@ -174,36 +174,51 @@ public: // query and access properties
 	 */
 	template <typename T>
 	const T& get_data_property(std::string name) const;
-
+	/**
+	*		@Additionaly implemented function
+	*		@Adds to the missing_populations vector (only for the Fluid Boundary Nodes)
+	*/
+	void add_missing_populations(const int i);
+	/**
+	*		@Additionaly implemented function
+	*		@Returns copy of the vector of missing populations
+	*/
+	std::vector<int> return_missing_populations();
+	/**
+	*		@Additionaly implemented function
+	*		@Clears the missing_populations vector
+	*/
+	void clear_missing_populations();
 public: // members
-	
+
 	lattice* l;            ///< Pointer to a lattice object
 	unsigned int index;    ///< Index for looking up data in the lattice
 	coordinate<int> coord; ///< Coordinate of node's position
+	std::vector<int> missing_populations; ///<Contains the indices of missing populations (for Fluid Boundary Nodes, empty otherwise)
 };
 
 /**
  *  @brief Lattice containing the populations.
- * 
- *  The lattice is constructed using the function @ref velocity_set() 
- *  which returns a velocity set object. Hence, the number of 
- *  populations is defined through that function. Data structures are 
+ *
+ *  The lattice is constructed using the function @ref velocity_set()
+ *  which returns a velocity set object. Hence, the number of
+ *  populations is defined through that function. Data structures are
  *  set up accordingly.
- * 
- *  The basic data structure for the population and the macroscopic 
+ *
+ *  The basic data structure for the population and the macroscopic
  *  qunatities are one dimensional arrays (vectors) interpreted as two
- *  dimensional planes. The x (i) dimension varies first and the y (j) 
+ *  dimensional planes. The x (i) dimension varies first and the y (j)
  *  dimension last.
- * 
+ *
  *  This class does provide access to the data through node iterators or
- *  through direct access of the public members. The node iterators 
- *  return a @ref node object that provides easy access to all local 
+ *  through direct access of the public members. The node iterators
+ *  return a @ref node object that provides easy access to all local
  *  quantities according to the 2d lattice coordinate.
- * 
- *  There are buffer regions (extent is one in all directions) around 
+ *
+ *  There are buffer regions (extent is one in all directions) around
  *  the data to make the advection procedure easier.
- * 
- *  The data is indexed in the range [0, nx-1][0, ny-1]; including 
+ *
+ *  The data is indexed in the range [0, nx-1][0, ny-1]; including
  *  buffers indices span the range [-1, nx][-1, ny], repectively.
  */
 class lattice
@@ -227,8 +242,8 @@ public: // ctor
 	 *  @param[in] _ny Number of nodes in y direction
 	 */
 	lattice(unsigned int _nx, unsigned int _ny);
-	
-public: // coordinates to index conversion	
+
+public: // coordinates to index conversion
 
 	/**
 	 *  @brief Convert a coordinate to a unique index
@@ -238,7 +253,7 @@ public: // coordinates to index conversion
 	 *  @pre Coordinates are in the domain
 	 */
 	inline unsigned int index(int i, int j) const;
-	
+
 public: // node access
 
 	/** @brief Iterator pointing to the beginning  @return iterator */
@@ -257,7 +272,7 @@ public: // node access
 	reverse_node_iterator rend();
 	/** @brief Const reverse iterator pointing to the beginning @return const reverse iterator */
 	const_reverse_node_iterator rend() const;
-	
+
 	/**
 	 *  @brief Get node at coordinate (i,j)
 	 *  @param[in] i x coordinate
@@ -266,7 +281,7 @@ public: // node access
 	 *  @pre coordinates are in domain
 	 */
 	inline node& get_node(int i, int j);
-	
+
 	/**
 	 *  @brief Get node at coordinate (i,j)
 	 *  @param[in] i x coordinate
@@ -275,7 +290,7 @@ public: // node access
 	 *  @pre coordinates are in domain
 	 */
 	inline const node& get_node(int i, int j) const;
-	
+
 	/**
 	 *  @brief Get node at coordinate (i,j)
 	 *  @param[in] idx unique node index
@@ -283,7 +298,7 @@ public: // node access
 	 *  @pre idx is between [0, @ref lattice::real_size )
 	 */
 	inline node& get_node(unsigned int idx);
-	
+
 	/**
 	 *  @brief Get node at coordinate (i,j)
 	 *  @param[in] idx unique node index
@@ -291,17 +306,17 @@ public: // node access
 	 *  @pre idx is between [0, @ref lattice::real_size )
 	 */
 	inline const node& get_node(unsigned int idx) const;
-	
+
 public: // walls
 
 	/**
 	 *  @brief Add a solid wall
-	 *  
-	 *  Creates wall flags in the coordinate rectangle defined by  
+	 *
+	 *  Creates wall flags in the coordinate rectangle defined by
 	 *  min_coord and max_coord. The corresponding nodes get the flag
 	 *  "wall" and they are also stored in the vector
 	 *  @ref lattice:wall_nodes for convienience.
-	 * 
+	 *
 	 *  @param[in] min_coord minimum bounding rectangle corner
 	 *  @param[in] max_coord maximum bounding rectangle corner
 	 *  @pre (min_coord, max_coord) define a rectangle
@@ -310,26 +325,28 @@ public: // walls
 	void add_wall(coordinate<int> min_coord, coordinate<int> max_coord);
 
 	void add_wallCylinder(float_type center[2], float_type radius);
-	
+
 	/** @brief Delete all existing walls */
 	void delete_walls();
 
 	/** @brief Delete all existing solids */
 	void delete_solids();
-	
+	/** @brief Delete all Fluid boundary nodes*/
+	void delete_fluid_boundary_nodes();
+
 public: // file dump
 
 	/**
 	 *  @brief Write fields to file
-	 * 
+	 *
 	 *  Write macroscopic variables to simple ascii file.
-	 *  
-	 *  @param[in] file_name file name 
+	 *
+	 *  @param[in] file_name file name
 	 */
 	void write_fields(std::string file_name);
 
 public: // print
-	
+
 	/** @brief print to output stream, useful for debugging only */
 	friend std::ostream& operator<<(std::ostream& os, const lattice& l);
 
@@ -350,6 +367,7 @@ public: // members
 	std::vector<node> nodes;                  ///< array holding all node objects
 	std::vector<node> wall_nodes;             ///< array holding node objects belonging to a solid wall
 	std::vector<node> solid_nodes;
+	std::vector<node> fluid_boundary_nodes;
 	property_array properties;                ///< properties datastructure (can hold many different properties per node)
 	const bool periodic_x;                    ///< flag whether to use periodicity in x direction
 	const bool periodic_y;                    ///< flag whether to use periodicity in y direction
@@ -394,6 +412,28 @@ template <typename T>
 T& node::get_data_property(std::string name) { return l->properties.get_data_property<T>(name, index); }
 template <typename T>
 const T& node::get_data_property(std::string name) const { return l->properties.get_data_property<T>(name, index); }
+/**
+*		@Additionaly implemented function
+*		@Adds to the missing_populations vector (only for the Fluid Boundary Nodes)
+*/
+void node::add_missing_populations(const int i) {
+	if (has_flag_property("Fluid_Boundary_Node")){
+		missing_populations.push_back(i);
+		std::cout << "pop added " << std::endl;
+	}
+	else
+		std::cout << "No Missing Populations! Not a fluid boundary node!" << std::endl;
+}
+/**
+*		@Additionaly implemented function
+*		@Returns copy of the vector of missing populations
+*/
+std::vector<int> node::return_missing_populations() {return missing_populations;}
+/**
+*		@Additionaly implemented function
+*		@Clears the missing_populations vector
+*/
+void node::clear_missing_populations() {missing_populations.clear();}
 
 
 
@@ -401,7 +441,7 @@ const T& node::get_data_property(std::string name) const { return l->properties.
 
 lattice::lattice(unsigned int _nx, unsigned int _ny)
 : nx(_nx), ny(_ny), size(nx*ny), buffer_size(1), real_nx(nx+2*buffer_size), real_ny(ny+2*buffer_size),
-  real_size(real_nx*real_ny), n_populations(velocity_set().size), 
+  real_size(real_nx*real_ny), n_populations(velocity_set().size),
   f( n_populations, std::vector<float_type>(real_size, 0) ),
   rho(real_size, 0), u(real_size, 0), v(real_size, 0), nodes(real_size),
   properties(real_size), periodic_x(true), periodic_y(true)
@@ -410,8 +450,10 @@ lattice::lattice(unsigned int _nx, unsigned int _ny)
 	properties.register_flag_property("fluid");
 	properties.register_flag_property("buffer");
 	properties.register_flag_property("wall");
-	properties.register_flag_property("solid");
-	
+	properties.register_flag_property("solid"); //used for the cylinder
+	properties.register_flag_property("Fluid_Boundary_Node"); //used for the cylinder
+
+
 	// set up nodes and properties
 	unsigned int k(0);
 	for (unsigned int j=0; j<real_ny; ++j)
@@ -419,7 +461,7 @@ lattice::lattice(unsigned int _nx, unsigned int _ny)
 		for (unsigned int i=0; i<real_nx; ++i)
 		{
 			nodes[k].set(this, static_cast<int>(i)-buffer_size, static_cast<int>(j)-buffer_size);
-			if (i<buffer_size || i>=real_nx-buffer_size || j<buffer_size || j>=real_ny-buffer_size) 
+			if (i<buffer_size || i>=real_nx-buffer_size || j<buffer_size || j>=real_ny-buffer_size)
 				properties.set_flag_property("buffer",nodes[k].index);
 			else properties.set_flag_property("fluid",nodes[k].index);
 			++k;
@@ -456,7 +498,7 @@ std::ostream& operator<<(std::ostream& os, const lattice& l)
 		for (int j=static_cast<int>(l.ny+l.buffer_size-1); j>-static_cast<int>(l.buffer_size+1); --j)
 		{
 			os << std::setw(4) << j << " |";
-			for (int i=-static_cast<int>(l.buffer_size); i<static_cast<int>(l.nx+l.buffer_size); ++i) 
+			for (int i=-static_cast<int>(l.buffer_size); i<static_cast<int>(l.nx+l.buffer_size); ++i)
 			{
 				const unsigned int index = (j+l.buffer_size)*l.real_nx + i + l.buffer_size;
 				if (i>=0 && i<static_cast<int>(l.nx) && j>=0 && j<static_cast<int>(l.ny))
@@ -491,139 +533,80 @@ void lattice::add_wall(coordinate<int> min_coord, coordinate<int> max_coord)
 	}
 }
 
-void lattice::add_wallCylinder(float_type center[2], float_type radius)
+void lattice::add_wallCylinder(float_type center[2], float_type radius) //function to mark the solid nodes (In and on the cylinder) & Fluid Boundary Nodes(some of whose populations come from solid)
 {
-	/*int x_min = floor(center[0] - radius);
-	int x_max = ceil(center[0] + radius);
-	int y_min = floor(center[1] - radius);
-	int y_max = ceil(center[1] + radius);*/
-	
-	coordinate<int> min_coord = {floor(center[0] - radius), floor(center[1] - radius)};
-	coordinate<int> max_coord = {ceil(center[0] + radius), ceil(center[1] + radius)};
+	std::vector<node> not_solid;
+	coordinate<int> min_coord = {floor(center[0] - radius)-1, floor(center[1] - radius)-1}; //bottom left corner of the bounding box
+	coordinate<int> max_coord = {ceil(center[0] + radius)+1, ceil(center[1] + radius)+1}; //top right corner of the bounding box
 
-	bool flag_solid_min = true;
-	bool flag_solid_max = false;
-
+	//differentiate between the solid nodes and the rest
 	for (int j = min_coord.j; j<=max_coord.j; ++j)
 	{
-		flag_solid_min = true;
-		flag_solid_max = false;
 		for (int i=min_coord.i; i<=max_coord.i; ++i)
 		{
-			if ( (!get_node(i,j).has_flag_property("solid")) or (!get_node(i,j).has_flag_property("wall")) )
+			if ( (i-center[0])*(i-center[0]) + (j-center[1])*(j-center[1]) - radius*radius <=0 && (!get_node(i,j).has_flag_property("solid")) ) //if on or inside the circle and not a solid node, mark as a solid node
 			{
-
-				//If inside circle
-				if ( (i-center[0])*(i-center[0]) + (j-center[1])*(j-center[1])-radius*radius <= 0 )
-				{
-					get_node(i,j).set_flag_property("solid");
-					solid_nodes.push_back(get_node(i,j));
-				}
-
-				//If bottom line with contact to solid in y_direction (j+1 is solid)
-				else if ((j == 0) and ( (i-center[0])*(i-center[0]) + (j+1-center[1])*(j+1-center[1])-radius*radius <= 0 ) )
-				{
-					get_node(i,j).set_flag_property("wall");
-					wall_nodes.push_back(get_node(i,j));
-					if ( !get_node(i,j+1).has_flag_property("solid") )
-					{
-						get_node(i,j+1).set_flag_property("solid");
-						solid_nodes.push_back(get_node(i,j+1));
-					}
-				}
-
-				//if topline with contact to solid in y_direction (j-1 is solid)
-				else if ((j == max_coord.j) and ( (i-center[0])*(i- center[0] ) + (j-1-center[1])*(j-1-center[1])-radius*radius <= 0 ) )
-				{
-					get_node(i,j).set_flag_property("wall");
-					wall_nodes.push_back(get_node(i,j));
-					if ( !get_node(i,j-1).has_flag_property("solid") )
-					{
-						get_node(i,j-1).set_flag_property("solid");
-						solid_nodes.push_back(get_node(i,j-1));
-					}
-				}
-
-				//If last node in x-direction before solid ( i+1 is solid)
-				else if ( (flag_solid_min ) and ( (i+1-center[0])*(i+1-center[0] ) + (j-center[1])*(j-center[1])-radius*radius <= 0 ) )
-				{
-					get_node(i,j).set_flag_property("wall");
-					wall_nodes.push_back(get_node(i,j));
-					flag_solid_max = true;
-					flag_solid_min = false;
-					if ( !get_node(i+1,j).has_flag_property("solid") )
-					{
-						get_node(i+1,j).set_flag_property("solid");
-						solid_nodes.push_back(get_node(i+1,j));
-					}
-				}
-
-				//If first node outside of the solid ( i-1 is  solid)
-				else if ( ( flag_solid_max ) and ( (i-1-center[0])*(i-1-center[0]) + (j-center[1])*(j-center[1])-radius*radius <= 0 )  )
-				{
-					get_node(i,j).set_flag_property("wall");
-					wall_nodes.push_back(get_node(i,j));
-					flag_solid_max = false;
-					if ( !get_node(i-1,j).has_flag_property("solid") )
-					{
-						get_node(i-1,j).set_flag_property("solid");
-						solid_nodes.push_back(get_node(i-1,j));
-					}
-				}
-
-				//If first diagonal node outside of the solid ( i+1, j+1 is  solid)
-				else if ( (i+1-center[0])*(i+1-center[0]) + (j+1-center[1])*(j+1-center[1])-radius*radius <= 0 )
-				{
-					get_node(i,j).set_flag_property("wall");
-					wall_nodes.push_back(get_node(i,j));
-					if ( !get_node(i+1,j+1).has_flag_property("solid") )
-					{
-						get_node(i+1,j+1).set_flag_property("solid");
-						solid_nodes.push_back(get_node(i+1,j+1));
-					}
-				}
-				
-				//If first diagonal node outside of the solid ( i+1, j-1 is  solid)
-				else if ( (i+1-center[0])*(i+1-center[0]) + (j-1-center[1])*(j-1-center[1])-radius*radius <= 0 )
-				{
-					get_node(i,j).set_flag_property("wall");
-					wall_nodes.push_back(get_node(i,j));
-					if ( !get_node(i+1,j-1).has_flag_property("solid") )
-					{
-						get_node(i+1,j-1).set_flag_property("solid");
-						solid_nodes.push_back(get_node(i+1,j-1));
-					}
-				}
-
-				//If first diagonal node outside of the solid ( i-1, j+1 is  solid)
-				else if ( (i-1-center[0])*(i-1-center[0]) + (j+1-center[1])*(j+1-center[1])-radius*radius <= 0 )
-				{
-					get_node(i,j).set_flag_property("wall");
-					wall_nodes.push_back(get_node(i,j));
-					if ( !get_node(i-1,j+1).has_flag_property("solid") )
-					{
-						get_node(i-1,j+1).set_flag_property("solid");
-						solid_nodes.push_back(get_node(i-1,j+1));
-					}
-				}
-
-				//If first diagonal node outside of the solid ( i-1, j-1 is  solid)
-				else if ( (i-1-center[0])*(i-1-center[0]) + (j-1-center[1])*(j-1-center[1])-radius*radius <= 0 )
-				{
-					get_node(i,j).set_flag_property("wall");
-					wall_nodes.push_back(get_node(i,j));
-					if ( !get_node(i-1,j-1).has_flag_property("solid") )
-					{
-						get_node(i-1,j-1).set_flag_property("solid");
-						solid_nodes.push_back(get_node(i-1,j-1));
-					}
-				}
-
+				get_node(i,j).set_flag_property("solid");
+				solid_nodes.push_back(get_node(i,j));
+				//std::cout << "Set solid property: "  << i << " " << j << std::endl;
 			}
-			
+			else if( (i-center[0])*(i-center[0]) + (j-center[1])*(j-center[1]) - radius*radius > 0 ) //if the point is completely outside the circle
+				not_solid.push_back(get_node(i,j));
+		}
+	}
+	//differentiate between the rest nodes and Fluid boundary nodes, updating the missing populations vector for the fluid boundary nodes
+/*	for ( std::vector<node>::iterator it = not_solid.begin() ; it!=not_solid.end() ; ++it ) //iterating over the nodes inside bounding box which are not solid
+	{
+		//checking the populations which intersect with the solid nodes
+		for ( int i = 0 ; i<velocity_set().size ; ++i)
+		{
+			if ( get_node(it->coord.i + velocity_set().c[0][i] , it->coord.j + velocity_set().c[1][i] ).has_flag_property("solid") ) // if the adjacent node (according to Ci is a solid node)
+			{
+				//Avoid multiple entries of same node
+				if(! it->has_flag_property("Fluid_Boundary_Node")){fluid_boundary_nodes.push_back(*it);}
+				// set flag and adapt population vector
+				it->set_flag_property("Fluid_Boundary_Node");
+				it->add_missing_populations(i);
+				std::cout << "Set boundary property: "  << it->coord.i << " " << it->coord.j << " // Pop: " << i << std::endl;
+				it_save = it;
+			}
 		}
 
+		std::cout << "Missing population size " << (it->missing_populations).size() << std::endl;
 	}
+
+	std::cout << "missing_populations Size after for loop: " << it_save->missing_populations.size() << std::endl;*/
+
+	for ( int k = 0 ; k < not_solid.size() ; ++k ) //iterating over the nodes inside bounding box which are not solid
+	{
+		//checking the populations which intersect with the solid nodes
+		for ( int i = 0 ; i<velocity_set().size ; ++i)
+		{
+			if ( get_node(not_solid[k].coord.i + velocity_set().c[0][i] , not_solid[k].coord.j + velocity_set().c[1][i] ).has_flag_property("solid") ) // if the adjacent node (according to Ci is a solid node)
+			{
+				//Avoid multiple entries of same node
+				if(! not_solid[k].has_flag_property("Fluid_Boundary_Node")){fluid_boundary_nodes.push_back(not_solid[k]);}
+				// set flag and adapt population vector
+				not_solid[k].set_flag_property("Fluid_Boundary_Node");
+				not_solid[k].add_missing_populations(i);
+				std::cout << "Set boundary property: "  << not_solid[k].coord.i << " " << not_solid[k].coord.j << " // Pop: " << i << std::endl;
+			}
+		}
+
+		//std::cout << "Missing population size " << (it->missing_populations).size() << std::endl;
+	}
+
+}
+
+void lattice::delete_fluid_boundary_nodes()
+{
+	for (node n : fluid_boundary_nodes)
+	{
+		n.unset_flag_property("Fluid_Boundary_Node");
+		n.clear_missing_populations();
+	}
+	fluid_boundary_nodes.clear();
+
 }
 
 void lattice::delete_walls()
@@ -655,14 +638,14 @@ void lattice::write_fields(std::string file_name)
 		// write body
 		for (unsigned int j=0; j<ny; ++j)
 		{
-			for (unsigned int i=0; i<nx; ++i) 
+			for (unsigned int i=0; i<nx; ++i)
 			{
-				ofs << i << " " << j << " " 
+				ofs << i << " " << j << " "
 				    << std::scientific << nodes[(j+buffer_size)*real_nx + i + buffer_size].rho() << " "
 				    << std::scientific << nodes[(j+buffer_size)*real_nx + i + buffer_size].u() << " "
 				    << std::scientific << nodes[(j+buffer_size)*real_nx + i + buffer_size].v() << "\n";
 			}
-		} 
+		}
 	}
 	else throw std::runtime_error("could not write to file");
 }
