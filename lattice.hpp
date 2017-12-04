@@ -178,7 +178,7 @@ public: // query and access properties
 	*		@Additionaly implemented function
 	*		@Adds to the missing_populations vector (only for the Fluid Boundary Nodes)
 	*/
-	void add_missing_populations(const int i);
+	void add_missing_populations(const int i, const int index_fluid_node);
 	/**
 	*		@Additionaly implemented function
 	*		@Returns copy of the vector of missing populations
@@ -189,6 +189,12 @@ public: // query and access properties
 	*		@Clears the missing_populations vector
 	*/
 	void clear_missing_populations();
+
+	inline std::vector<int> missing_pop(const unsigned int index_fluid_node) const;
+
+	inline std::vector<int>& missing_pop(const unsigned int index_fluid_node);
+
+
 public: // members
 
 	lattice* l;            ///< Pointer to a lattice object
@@ -326,6 +332,8 @@ public: // walls
 
 	void add_wallCylinder(float_type center[2], float_type radius);
 
+	std::vector<int> add_wallCylinder_it(float_type center[2], float_type radius);	
+
 	/** @brief Delete all existing walls */
 	void delete_walls();
 
@@ -371,6 +379,7 @@ public: // members
 	property_array properties;                ///< properties datastructure (can hold many different properties per node)
 	const bool periodic_x;                    ///< flag whether to use periodicity in x direction
 	const bool periodic_y;                    ///< flag whether to use periodicity in y direction
+	std::vector<std::vector<int>> miss_pop;   ///< Vector of missing populations for each node
 };
 
 
@@ -400,6 +409,9 @@ inline float_type node::u() const { return l->u[index]; }
 inline float_type& node::u() { return l->u[index]; }
 inline float_type node::v() const { return l->v[index]; }
 inline float_type& node::v() { return l->v[index]; }
+inline std::vector<int> node::missing_pop(const unsigned int index_fluid_node) const { return l->miss_pop[index_fluid_node]; }
+inline std::vector<int>& node::missing_pop(const unsigned int index_fluid_node){return l->miss_pop[index_fluid_node]; }
+
 
 inline bool node::has_flag_property(std::string name) const { return l->properties.has_flag_property(name, index); }
 inline bool node::set_flag_property(std::string name) { return l->properties.set_flag_property(name, index); }
@@ -416,10 +428,13 @@ const T& node::get_data_property(std::string name) const { return l->properties.
 *		@Additionaly implemented function
 *		@Adds to the missing_populations vector (only for the Fluid Boundary Nodes)
 */
-void node::add_missing_populations(const int i) {
+void node::add_missing_populations(const int i, const int index_fluid_node) {
 	if (has_flag_property("Fluid_Boundary_Node")){
 		missing_populations.push_back(i);
-		std::cout << "pop added " << std::endl;
+		if(l->miss_pop.size() < index_fluid_node + 1) // add new vector part for this node
+			l->miss_pop.push_back(std::vector<int>());
+		// add to the vector
+		l->miss_pop[index_fluid_node].push_back(i);
 	}
 	else
 		std::cout << "No Missing Populations! Not a fluid boundary node!" << std::endl;
@@ -433,7 +448,10 @@ std::vector<int> node::return_missing_populations() {return missing_populations;
 *		@Additionaly implemented function
 *		@Clears the missing_populations vector
 */
-void node::clear_missing_populations() {missing_populations.clear();}
+void node::clear_missing_populations() {
+	missing_populations.clear();
+	l->miss_pop.clear();
+}
 
 
 
@@ -533,6 +551,58 @@ void lattice::add_wall(coordinate<int> min_coord, coordinate<int> max_coord)
 	}
 }
 
+std::vector<int> lattice::add_wallCylinder_it(float_type center[2], float_type radius) //function to mark the solid nodes (In and on the cylinder) & Fluid Boundary Nodes(some of whose populations come from solid)
+{
+	std::vector<node> not_solid;
+	coordinate<int> min_coord = {floor(center[0] - radius)-1, floor(center[1] - radius)-1}; //bottom left corner of the bounding box
+	coordinate<int> max_coord = {ceil(center[0] + radius)+1, ceil(center[1] + radius)+1}; //top right corner of the bounding box
+
+	//differentiate between the solid nodes and the rest
+	for (int j = min_coord.j; j<=max_coord.j; ++j)
+	{
+		for (int i=min_coord.i; i<=max_coord.i; ++i)
+		{
+			if ( (i-center[0])*(i-center[0]) + (j-center[1])*(j-center[1]) - radius*radius <=0 && (!get_node(i,j).has_flag_property("solid")) ) //if on or inside the circle and not a solid node, mark as a solid node
+			{
+				get_node(i,j).set_flag_property("solid");
+				solid_nodes.push_back(get_node(i,j));
+				//std::cout << "Set solid property: "  << i << " " << j << std::endl;
+			}
+			else if( (i-center[0])*(i-center[0]) + (j-center[1])*(j-center[1]) - radius*radius > 0 ) //if the point is completely outside the circle
+				not_solid.push_back(get_node(i,j));
+		}
+	}
+	//differentiate between the rest nodes and Fluid boundary nodes, updating the missing populations vector for the fluid boundary nodes
+	//node* it_save;
+	std::vector<node>::iterator it_save;
+	for ( std::vector<node>::iterator it = not_solid.begin() ; it!=not_solid.end() ; ++it ) //iterating over the nodes inside bounding box which are not solid
+	{
+		//checking the populations which intersect with the solid nodes
+		for ( int i = 0 ; i<velocity_set().size ; ++i)
+		{
+			if ( get_node(it->coord.i + velocity_set().c[0][i] , it->coord.j + velocity_set().c[1][i] ).has_flag_property("solid") ) // if the adjacent node (according to Ci is a solid node)
+			{
+				//Avoid multiple entries of same node
+				if(! it->has_flag_property("Fluid_Boundary_Node")){fluid_boundary_nodes.push_back(*it);}
+				// set flag and adapt population vector
+				it->set_flag_property("Fluid_Boundary_Node");
+				it->add_missing_populations(i, it-not_solid.begin());
+				//std::cout << "Set boundary property: "  << it->coord.i << " " << it->coord.j << " // Pop: " << i << std::endl;
+				//it_save = &(*it);
+				it_save = it;
+			}
+		}
+
+		//std::cout << "Missing population size " << (it->missing_populations).size() << std::endl;
+	}
+
+	std::cout << "missing_populations Size after for loop In lattice: " << it_save->missing_populations.size() << std::endl;
+	std::cout << "missing_populations Size after for loop In lattice: " << it_save->missing_populations[0] << std::endl;
+	return it_save->missing_populations;
+}
+
+
+
 void lattice::add_wallCylinder(float_type center[2], float_type radius) //function to mark the solid nodes (In and on the cylinder) & Fluid Boundary Nodes(some of whose populations come from solid)
 {
 	std::vector<node> not_solid;
@@ -555,7 +625,8 @@ void lattice::add_wallCylinder(float_type center[2], float_type radius) //functi
 		}
 	}
 	//differentiate between the rest nodes and Fluid boundary nodes, updating the missing populations vector for the fluid boundary nodes
-/*	for ( std::vector<node>::iterator it = not_solid.begin() ; it!=not_solid.end() ; ++it ) //iterating over the nodes inside bounding box which are not solid
+	std::vector<node>::iterator it_save;
+	for ( std::vector<node>::iterator it = not_solid.begin() ; it!=not_solid.end() ; ++it ) //iterating over the nodes inside bounding box which are not solid
 	{
 		//checking the populations which intersect with the solid nodes
 		for ( int i = 0 ; i<velocity_set().size ; ++i)
@@ -566,18 +637,18 @@ void lattice::add_wallCylinder(float_type center[2], float_type radius) //functi
 				if(! it->has_flag_property("Fluid_Boundary_Node")){fluid_boundary_nodes.push_back(*it);}
 				// set flag and adapt population vector
 				it->set_flag_property("Fluid_Boundary_Node");
-				it->add_missing_populations(i);
+				it->add_missing_populations(i, fluid_boundary_nodes.size()-1);
 				std::cout << "Set boundary property: "  << it->coord.i << " " << it->coord.j << " // Pop: " << i << std::endl;
 				it_save = it;
 			}
 		}
 
-		std::cout << "Missing population size " << (it->missing_populations).size() << std::endl;
+		//std::cout << "Missing population size " << (it->missing_populations).size() << std::endl;
 	}
 
-	std::cout << "missing_populations Size after for loop: " << it_save->missing_populations.size() << std::endl;*/
+	//std::cout << "missing_populations Size after for loop: " << it_save->missing_populations.size() << std::endl;
 
-	for ( int k = 0 ; k < not_solid.size() ; ++k ) //iterating over the nodes inside bounding box which are not solid
+	/*for ( int k = 0 ; k < not_solid.size() ; ++k ) //iterating over the nodes inside bounding box which are not solid
 	{
 		//checking the populations which intersect with the solid nodes
 		for ( int i = 0 ; i<velocity_set().size ; ++i)
@@ -585,16 +656,16 @@ void lattice::add_wallCylinder(float_type center[2], float_type radius) //functi
 			if ( get_node(not_solid[k].coord.i + velocity_set().c[0][i] , not_solid[k].coord.j + velocity_set().c[1][i] ).has_flag_property("solid") ) // if the adjacent node (according to Ci is a solid node)
 			{
 				//Avoid multiple entries of same node
-				if(! not_solid[k].has_flag_property("Fluid_Boundary_Node")){fluid_boundary_nodes.push_back(not_solid[k]);}
+				if(! not_solid[k].has_flag_property("Fluid_Boundary_Node")){
+					fluid_boundary_nodes.push_back(not_solid[k]);
+				}
 				// set flag and adapt population vector
 				not_solid[k].set_flag_property("Fluid_Boundary_Node");
 				not_solid[k].add_missing_populations(i);
 				std::cout << "Set boundary property: "  << not_solid[k].coord.i << " " << not_solid[k].coord.j << " // Pop: " << i << std::endl;
 			}
 		}
-
-		//std::cout << "Missing population size " << (it->missing_populations).size() << std::endl;
-	}
+	}*/
 
 }
 

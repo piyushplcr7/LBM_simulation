@@ -62,11 +62,12 @@ public: // ctor
 	void initialize()
 	{
 		//Initialize Cyclinder
-		Cyl_center[0] = 75.0;
-		Cyl_center[1] = 75.0;
-		Cyl_radius = 30.0;
+		Cyl_center[0] = l.nx/2-l.nx/6;
+		Cyl_center[1] = l.ny/2;
+		Cyl_radius = l.nx/6;
 		Cyl_vel[0] = 0.0;
 		Cyl_vel[1] = 0.0;
+
 		l.add_wallCylinder(Cyl_center, Cyl_radius);
 
 		//Init B.C.
@@ -80,7 +81,7 @@ public: // ctor
 			double ux,uy,rho;
 			for (int i=0; i<static_cast<int>(l.nx); ++i)
 			{
-				/*if( !(l.get_node(i,j).has_flag_property("solid")) )
+				if( !(l.get_node(i,j).has_flag_property("solid")) )
 				{
 					//Initialize flow around Cylinder
 					ux = 0.0;
@@ -107,12 +108,12 @@ public: // ctor
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
 						//l.get_node(i,j).f(k)=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
-						l.get_node(i,j).f(k)=-velocity_set().W[k]; //for ux=0 uy=0 rho=1
+						l.get_node(i,j).f(k)=-0.0*velocity_set().W[k]; //for ux=0 uy=0 rho=1
 					}
-				}*/
+				}
 
 				//Initialize flow around Cylinder
-				ux = 0.0;
+				/*ux = 0.0;
 				uy = 0.0;
 				rho = 1;
 				l.get_node(i,j).u()  = ux;
@@ -123,7 +124,7 @@ public: // ctor
 					l.get_node(i,j).f(k)=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
 					//l.get_node(i,j).f(k)=velocity_set().W[k]; //for ux=0 uy=0 rho=1
 				}
-				
+				*/
 			}
 		} //loop j ends
 
@@ -173,22 +174,24 @@ public: // ctor
 		double x1 = (double)n.coord.i; double y1 = (double)n.coord.j;
 		double x2 =  x1 + (double)velocity_set().c[0][i]; double y2 =  y1 + (double)velocity_set().c[1][i];
 		//calc distance c_i
-		float_type c_i = sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
-
 		float_type dx = x2-x1;
 		float_type dy = y2-y1;
+
+		float_type c_i = sqrt((dx)*(dx)+(dy)*(dy));
+
+		//std::cout << "dx " << dx << " dy " << dy << " c_i " << c_i << std::endl;
 
 		//calc x_w,i
 		//find root of quadratic equation
 		//((x1+t*dx -l.center[0])*(x1+t*dx -l.center[0]) + (y1+t*dy -l.center[1])*(y1+t*dy -l.center[1])-l.radius*l.radius == 0)
 		float_type a = (dx*dx + dy*dy);
-		float_type b = dx* (x1-Cyl_center[0]) + dy * (y1 - Cyl_center[1]);
+		float_type b = 2*dx* (x1-Cyl_center[0]) + 2*dy * (y1 - Cyl_center[1]);
 		float_type c = (x1-Cyl_center[0])*(x1-Cyl_center[0]) + (y1-Cyl_center[1])*(y1-Cyl_center[1]) - Cyl_radius*Cyl_radius;
 		float_type t = solve_quadratic(a,b,c);
 
 
 		float_type q_i = sqrt(t*dx *t*dx + t*dy *t*dy)/c_i;
-		std::cout << "Q_i: " << q_i << std::endl; 
+		//std::cout << "Q_i: " << q_i << std::endl; 
 
 		return q_i;
 
@@ -255,7 +258,7 @@ public: // ctor
 	{
 		//Curved Wall
 		//#pragma omp parallel for
-		std::cout << "Fluid boundary node: " <<  l.fluid_boundary_nodes.size() << std::endl;
+		//std::cout << "Fluid boundary node: " <<  l.fluid_boundary_nodes.size() << std::endl;
 		for (unsigned int i=0; i<l.fluid_boundary_nodes.size(); ++i)
 		{
 			//bool dir_solid[9] = {false, false, false, false, false, false, false, false, false};
@@ -282,17 +285,17 @@ public: // ctor
 					l.get_node(x_i+velocity_set().c[0][j], y_j + velocity_set().c[1][j]).f(j) = l.get_node(x_i, y_j).f(j);
 				}
 			}*/
-			std::cout << l.get_node(x_i,y_j).missing_populations.size() << std::endl;
-			std::vector<int> i_d(l.fluid_boundary_nodes[i].missing_populations); //contains the direction in which solid is encountered
+			
+			//std::vector<int> i_d(l.fluid_boundary_nodes[i].missing_populations); //contains the direction in which solid is encountered
+
+			std::vector<int> i_d(l.fluid_boundary_nodes[i].missing_pop(i));
+			std::cout <<"Size of missing pop: " << i_d.size() << std::endl;
 			//utgt
 			float_type utgt[2] = {0,0};
 			float_type rho_bb = 0;
 			float_type rho_s = 0;
 			float_type rho_0 = 1;
 			float_type q_i[9] = {1,1,1,1,1,1,1,1,1};
-
-			std::cout << i_d.size() << std::endl;
-
 
 			for (int j = 0; j < i_d.size(); ++j)
 			{
@@ -303,7 +306,7 @@ public: // ctor
 				//get q_i for the direction given by i_d[j]
 				//q_i[i_d[j]] = get_qi(x_i, y_j, x_i - c_x, y_j - c_y);
 				q_i[i_d[j]] = get_qi( l.fluid_boundary_nodes[i], i_d[j] );
-				std::cout << j << " "<< std::endl;
+				//std::cout << j << " Population " << i_d[j] << std::endl;
 
 				//get u_f,i
 				float_type u_fi[2] = { l.get_node(x_i+c_x,y_j+c_y).u(), l.get_node(x_i+c_x,y_j+c_y).v()};
@@ -316,11 +319,15 @@ public: // ctor
 				float_type v_w_i = Cyl_vel[1];
 
 				//get rho_s
-				rho_s += 6*rho_0*velocity_set().W[i_d[j]]*(c_x*u_w_i + c_y*v_w_i);
+				rho_s += 6*rho_0*velocity_set().W[inv_popl(i_d[j])]*(c_x*u_w_i + c_y*v_w_i);
 				//adjusting the bounce-back populations (the D-bar populations, which are inverse of the missing_populations)
-				l.fluid_boundary_nodes[i].f( inv_popl(i_d[j]) ) = l.get_node(x_i, y_j).f(i_d[j]);
+				l.fluid_boundary_nodes[i].f( inv_popl(i_d[j]) ) = l.get_node(x_i-c_x, y_j-c_y).f(i_d[j]);
+				std::cout << "Utgt " << utgt[0] << " vtgt: " << utgt[1] << " u_w:" << u_w_i << " v_w: " << v_w_i << " rho_s " << rho_s << std::endl;
+
 
 			}
+
+			//std::cout << "Utgt " << utgt[0] << " vtgt: " << utgt[1] << " u_w:" << u_w_i << " v_w: " << v_w_i << " rho_s" << rho_s << std::endl;
 
 			for(int j = 0; j < velocity_set().size ; ++j){
 				//rho_bb += l.get_node(x_i, y_j).f(j);
@@ -356,8 +363,11 @@ public: // ctor
 							f_new +=  1/2/pow(velocity_set().cs,4)*((Pneq[alpha][beta]+Peq[alpha][beta])*(velocity_set().c[alpha][inv_popl(i_d[j])]*velocity_set().c[beta][inv_popl(i_d[j])] ));
 					}
 				}
-				f_new *= velocity_set().W[i_d[j]];
-				l.get_node(x_i, y_j).f( inv_popl(i_d[j]) ) = f_new;
+				f_new *= velocity_set().W[inv_popl(i_d[j])];
+				//l.get_node(x_i, y_j).f( inv_popl(i_d[j]) ) = f_new;
+				l.fluid_boundary_nodes[i].f(inv_popl(i_d[j])) = f_new;
+				//l.get_node(x_i, y_j).f( i_d[j] ) = f_new;
+				//l.get_node(x_i, y_j).f( i_d[j] ) = -100;
 				if (!std::isnan(f_new))
 					std::cout << "F_ new_ missing: " << f_new << std::endl;
 			}
@@ -542,12 +552,13 @@ public: // ctor
 
 		//calculation rho,ux,uy at each lattice point then eqbm populations (for each element of velocity set)
 		double ux,uy,rho,feq;
+		bool Collide_everywhere = false;
 
 		for (int j=0; j<static_cast<int>(l.ny); ++j)
 		{
 			for (int i=0; i<static_cast<int>(l.nx); ++i)
 			{	//calculation of rho, ux and uy for the node
-				if( !(l.get_node(i,j).has_flag_property("solid")) )
+				if( !(l.get_node(i,j).has_flag_property("solid")) or Collide_everywhere )
 				{
 					rho=0.,ux=0.,uy=0.;
 					for (unsigned int temp=0; temp<velocity_set().size; ++temp)
@@ -561,6 +572,8 @@ public: // ctor
 					l.get_node(i,j).rho()=rho;
 					l.get_node(i,j).u()   = ux;
 					l.get_node(i,j).v()   = uy;
+					if(l.get_node(i,j).has_flag_property("Fluid_Boundary_Node"))
+						std::cout << "rho: " << rho << " u_actual: " << ux << " v_actual: " << uy << std::endl;
 
 					//collide populations
 					#pragma omp parallel for /*num_threads(8)*/
