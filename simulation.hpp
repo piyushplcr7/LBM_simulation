@@ -84,7 +84,7 @@ public: // ctor
 				if( !(l.get_node(i,j).has_flag_property("solid")) )
 				{
 					//Initialize flow around Cylinder
-					ux = 0.0;
+					ux = 0.01;
 					uy = 0.0;
 					rho = 1;
 					l.get_node(i,j).u()  = ux;
@@ -92,8 +92,8 @@ public: // ctor
 					l.get_node(i,j).rho() = rho;
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
-						//l.get_node(i,j).f(k)=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
-						l.get_node(i,j).f(k)=velocity_set().W[k]; //for ux=0 uy=0 rho=1
+						l.get_node(i,j).f(k)=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
+						//l.get_node(i,j).f(k)=velocity_set().W[k]; //for ux=0 uy=0 rho=1
 					}
 				}
 				else
@@ -101,14 +101,14 @@ public: // ctor
 					//for inside the solid, initialize with negative values for populations
 					ux = 0.;
 					uy = 0.;
-					rho = 1;
+					rho = 10;
 					l.get_node(i,j).u()  = ux;
 					l.get_node(i,j).v()  = uy;
 					l.get_node(i,j).rho() = rho;
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
 						//l.get_node(i,j).f(k)=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
-						l.get_node(i,j).f(k)= velocity_set().W[k]; //for ux=0 uy=0 rho=1
+						l.get_node(i,j).f(k)= 0 ;//velocity_set().W[k]; //for ux=0 uy=0 rho=1
 					}
 				}
 
@@ -325,9 +325,9 @@ public: // ctor
 				//adjusting the bounce-back populations (the D-bar populations, which are inverse of the missing_populations)
 				if(l.get_node(x_i-c_x, y_j-c_y).f(i_d[j]) <-100 or std::isnan(l.get_node(x_i-c_x, y_j-c_y).f(i_d[j])) or l.get_node(x_i-c_x, y_j-c_y).f(i_d[j])> 100){
 					std::cout << "F_inverse is infinity!!" << std::endl;
-					char temp = std::cin.get();
+					//char temp = std::cin.get();
 				}
-				l.fluid_boundary_nodes[i].f( inv_popl(i_d[j]) ) = l.get_node(x_i-c_x, y_j-c_y).f(i_d[j]);
+				l.fluid_boundary_nodes[i].f( inv_popl(i_d[j]) ) = l.get_node(x_i, y_j).f(i_d[j]);
 				std::cout << "Utgt " << utgt[0] << " vtgt: " << utgt[1] << " u_w:" << u_w_i << " v_w: " << v_w_i << " rho_s " << rho_s << std::endl;
 
 
@@ -342,6 +342,10 @@ public: // ctor
 
 			//rho_tgt
 			float_type rho_tgt = rho_bb + rho_s;
+
+			l.get_node(x_i, y_j).rho() = rho_tgt;
+			l.get_node(x_i, y_j).u() = utgt[0];
+			l.get_node(x_i, y_j).v() = utgt[1];
 
 			//Calculate missing populations
 			float_type Peq[2][2];
@@ -374,11 +378,11 @@ public: // ctor
 				
 				f_new *= velocity_set().W[inv_popl(i_d[j])];
 				float_type f_old =l.get_node(x_i, y_j).f( inv_popl(i_d[j]) );
-				//l.get_node(x_i, y_j).f( inv_popl(i_d[j]) ) = f_new;
+				//l.get_node(x_i, y_j).f( i_d[j] ) = f_new;
 				//l.fluid_boundary_nodes[i].f(inv_popl(i_d[j])) = f_new;
 				
-				//l.get_node(x_i, y_j).f( inv_popl(i_d[j]) ) = f_new;
-				l.get_node(x_i, y_j).f( inv_popl(i_d[j]) ) = 1000;
+				l.get_node(x_i, y_j).f( inv_popl(i_d[j]) ) = f_new;
+				//l.get_node(x_i, y_j).f( inv_popl(i_d[j]) ) = 1000;
 				//if (!std::isnan(f_new))
 					std::cout << "F_ new_ missing: " << f_new << " F_old: " << f_old << std::endl;
 			}
@@ -519,7 +523,7 @@ public: // ctor
 	/** @brief Apply Boundary Conditions on left wall  */
 	void left_wall_bc(){
 		//Inlet Conditions
-		unsigned int runUptime = 100;
+		unsigned int runUptime = 0;
 		float_type u_x;
 
 		if(time < runUptime)
