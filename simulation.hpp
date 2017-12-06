@@ -85,7 +85,7 @@ public: // ctor
 				{
 					//Initialize flow around Cylinder
 					ux = 0.01;
-					uy = 0.01;
+					uy = 0.0;
 					rho = 1;
 					l.get_node(i,j).u()  = ux;
 					l.get_node(i,j).v()  = uy;
@@ -441,7 +441,7 @@ public: // ctor
 	/** @brief Apply Boundary Conditions on left wall  */
 	void left_wall_bc(){
 		//Inlet Conditions
-		unsigned int runUptime = 100;
+		unsigned int runUptime = 0;
 		float_type u_x;
 
 		if(time < runUptime)
