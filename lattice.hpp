@@ -12,6 +12,7 @@
 #include "property_array.hpp"
 #include <vector>
 #include <fstream>
+#include<cassert>
 
 namespace lb {
 
@@ -371,6 +372,7 @@ public: // members
 	property_array properties;                ///< properties datastructure (can hold many different properties per node)
 	const bool periodic_x;                    ///< flag whether to use periodicity in x direction
 	const bool periodic_y;                    ///< flag whether to use periodicity in y direction
+	std::vector<std::vector<int>> miss_pop;   ///< Vector of missing populations for each node
 };
 
 
@@ -400,6 +402,9 @@ inline float_type node::u() const { return l->u[index]; }
 inline float_type& node::u() { return l->u[index]; }
 inline float_type node::v() const { return l->v[index]; }
 inline float_type& node::v() { return l->v[index]; }
+//inline std::vector<int> node::missing_pop(const unsigned int index_fluid_node) const { return l->miss_pop[index_fluid_node]; }
+//inline std::vector<int>& node::missing_pop(const unsigned int index_fluid_node){return l->miss_pop[index_fluid_node]; }
+
 
 inline bool node::has_flag_property(std::string name) const { return l->properties.has_flag_property(name, index); }
 inline bool node::set_flag_property(std::string name) { return l->properties.set_flag_property(name, index); }
@@ -449,7 +454,7 @@ lattice::lattice(unsigned int _nx, unsigned int _ny)
 	properties.register_flag_property("buffer");
 	properties.register_flag_property("wall");
 	properties.register_flag_property("solid"); //used for the cylinder
-	properties.register_flag_property("Fluid_Boundary_Node"); //used for the cylinder
+	properties.register_flag_property("Fluid_Boundary_Node"); //used for the nodes adjacent to the cylinder
 
 
 	// set up nodes and properties
@@ -534,45 +539,56 @@ void lattice::add_wall(coordinate<int> min_coord, coordinate<int> max_coord)
 void lattice::add_wallCylinder(float_type center[2], float_type radius) //function to mark the solid nodes (In and on the cylinder) & Fluid Boundary Nodes(some of whose populations come from solid)
 {
 	std::vector<node> not_solid;
-	coordinate<int> min_coord = {floor(center[0] - radius), floor(center[1] - radius)}; //bottom left corner of the bounding box
-	coordinate<int> max_coord = {ceil(center[0] + radius), ceil(center[1] + radius)}; //top right corner of the bounding box
+	int x1 = floor(center[0] - radius)-1;  int y1 = floor(center[1] - radius)-1;
+	int x2 = ceil(center[0] + radius)+1;  int y2 = ceil(center[1] + radius)+1;
+	coordinate<int> min_coord = {x1,y1}; //bottom left corner of the bounding box
+	coordinate<int> max_coord = {x2,y2}; //top right corner of the bounding box
 
 	//differentiate between the solid nodes and the rest
 	for (int j = min_coord.j; j<=max_coord.j; ++j)
 	{
 		for (int i=min_coord.i; i<=max_coord.i; ++i)
 		{
-			if ( (i-center[0])*(i-center[0]) + (j-center[1])*(j-center[1]) - radius*radius <=0 && (!get_node(i,j).has_flag_property("solid")) ) //if on or inside the circle and not a solid node, mark as a solid node
+			if ( (i-center[0])*(i-center[0]) + (j-center[1])*(j-center[1]) - radius*radius <=0 ) //if on or inside the circle
 			{
-				get_node(i,j).set_flag_property("solid");
-				solid_nodes.push_back(get_node(i,j));
+				if ( !(get_node(i,j).has_flag_property("solid")) ) { // if on or inside the circle and and not a solid node, mark as a solid node
+					get_node(i,j).set_flag_property("solid");
+					solid_nodes.push_back(get_node(i,j));
+				}
+
 			}
-			else if( (i-center[0])*(i-center[0]) + (j-center[1])*(j-center[1]) - radius*radius > 0 ) //if the point is completely outside the circle
+			else  //if the point is completely outside the circle
 				not_solid.push_back(get_node(i,j));
 		}
 	}
 	//differentiate between the rest nodes and Fluid boundary nodes, updating the missing populations vector for the fluid boundary nodes
 	for ( std::vector<node>::iterator it = not_solid.begin() ; it!=not_solid.end() ; ++it ) //iterating over the nodes inside bounding box which are not solid
 	{
+		unsigned int x = it->coord.i;	unsigned int y = it->coord.j;
 		//checking the populations which intersect with the solid nodes
-		for ( int i = 0 ; i<velocity_set().size ; ++i)
+		for (unsigned int i = 0 ; i<velocity_set().size ; ++i)
 		{
-			if ( get_node(it->coord.i + velocity_set().c[0][i] , it->coord.j + velocity_set().c[1][i] ).has_flag_property("solid") ) // if the adjacent node (according to Ci is a solid node)
+			if ( get_node(x + velocity_set().c[0][i] ,y + velocity_set().c[1][i] ).has_flag_property("solid") ) // if the adjacent node (according to Ci is a solid node)
 			{
-				it->set_flag_property("Fluid_Boundary_Node");
-				fluid_boundary_nodes.push_back(*it);
-				it->add_missing_populations(i);
+				if ( !(get_node(x,y).has_flag_property("Fluid_Boundary_Node") ) )
+				{
+					get_node(x,y).set_flag_property("Fluid_Boundary_Node");
+					fluid_boundary_nodes.push_back(*it);
+				}
+				get_node(x,y).add_missing_populations(i);
 			}
 		}
 	}
+	not_solid.clear();
 }
 
 void lattice::delete_fluid_boundary_nodes()
 {
 	for (node n : fluid_boundary_nodes)
 	{
-		n.unset_flag_property("Fluid_Boundary_Node");
-		n.clear_missing_populations();
+		unsigned int x = n.coord.i;	unsigned int y = n.coord.j;
+		get_node(x,y).unset_flag_property("Fluid_Boundary_Node");
+		get_node(x,y).clear_missing_populations();
 	}
 	fluid_boundary_nodes.clear();
 

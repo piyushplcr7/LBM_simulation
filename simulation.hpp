@@ -62,15 +62,18 @@ public: // ctor
 	void initialize()
 	{
 		//Initialize Cyclinder
-		float_type Cyl_center[] = {75.0,75.0};
-		float_type Cyl_radius = 30.0;
-		double Cyl_vel[] = {0.0,0.0};
+		Cyl_center[0] = l.nx/2-l.nx/6;
+		Cyl_center[1] = l.ny/2;
+		Cyl_radius = l.nx/6;
+		Cyl_vel[0] = 0.0;
+		Cyl_vel[1] = 0.0;
+
 		l.add_wallCylinder(Cyl_center, Cyl_radius);
 
 		//Init B.C.
 		u_inlet = 0.01;
 		rho_inlet = 1;
-		const float_type pi(std::acos(-1.0));
+		//const float_type pi(std::acos(-1.0));
 
 		//#pragma omp parallel for
 		for (int j=0; j<static_cast<int>(l.ny); ++j)
@@ -81,31 +84,24 @@ public: // ctor
 				if( !(l.get_node(i,j).has_flag_property("solid")) )
 				{
 					//Initialize flow around Cylinder
-					ux = 0.0;
-					uy = 0.0;
+					ux = 0.01;
+					uy = 0.01;
 					rho = 1;
 					l.get_node(i,j).u()  = ux;
 					l.get_node(i,j).v()  = uy;
 					l.get_node(i,j).rho() = rho;
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
-						//l.get_node(i,j).f(k)=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
-						l.get_node(i,j).f(k)=velocity_set().W[k]; //for ux=0 uy=0 rho=1
+						l.get_node(i,j).f(k)=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
 					}
 				}
 				else
 				{
-					//for inside the solid, initialize with negative values for populations
-					ux = 0.;
-					uy = 0.;
-					rho = 10;
-					l.get_node(i,j).u()  = ux;
-					l.get_node(i,j).v()  = uy;
-					l.get_node(i,j).rho() = rho;
+					l.get_node(i,j).rho() = 10;
+					//for inside the solid, initialize with 0 value for populations
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
-						//l.get_node(i,j).f(k)=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
-						l.get_node(i,j).f(k)=-velocity_set().W[k]; //for ux=0 uy=0 rho=1
+						l.get_node(i,j).f(k)=0.;
 					}
 				}
 			}
@@ -126,8 +122,6 @@ public: // ctor
 			for (int i=0; i<static_cast<int>(l.nx); ++i)
 			{
 				//advect everything, even the solid nodes, if bcs are not implemented correctly, if will be seen
-				//if( !(l.get_node(i,j).has_flag_property("solid")) ) //advect normally if not a solid node (causes filling of the populations in the solid node)
-				//{
 					//right top index or increasing index
 					rtindex= l.real_nx*(j+l.buffer_size) + i + l.buffer_size;
 					//left bottom index or decreasing index
@@ -156,36 +150,35 @@ public: // ctor
 	float_type get_qi(const node& n,const int& i){
 		double x1 = (double)n.coord.i; double y1 = (double)n.coord.j;
 		double x2 =  x1 + (double)velocity_set().c[0][i]; double y2 =  y1 + (double)velocity_set().c[1][i];
+		assert(l.get_node((int)x2,(int)y2).has_flag_property("solid"));
 		//calc distance c_i
-		float_type c_i = sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
-
 		float_type dx = x2-x1;
 		float_type dy = y2-y1;
+
+		float_type c_i = sqrt((dx)*(dx)+(dy)*(dy));
+
+		//std::cout << "dx " << dx << " dy " << dy << " c_i " << c_i << std::endl;
 
 		//calc x_w,i
 		//find root of quadratic equation
 		//((x1+t*dx -l.center[0])*(x1+t*dx -l.center[0]) + (y1+t*dy -l.center[1])*(y1+t*dy -l.center[1])-l.radius*l.radius == 0)
 		float_type a = (dx*dx + dy*dy);
-		float_type b = dx* (x1-Cyl_center[0]) + dy * (y1 - Cyl_center[1]);
+		float_type b = 2*dx* (x1-Cyl_center[0]) + 2*dy * (y1 - Cyl_center[1]);
 		float_type c = (x1-Cyl_center[0])*(x1-Cyl_center[0]) + (y1-Cyl_center[1])*(y1-Cyl_center[1]) - Cyl_radius*Cyl_radius;
 		float_type t = solve_quadratic(a,b,c);
-
-
 		float_type q_i = sqrt(t*dx *t*dx + t*dy *t*dy)/c_i;
+		//std::cout << "Q_i: " << q_i << std::endl;
 
 		return q_i;
 
 	}
 	/**  @brief Calculate Eq Presure tensor */
 	void calc_Peq(int i, int j, float_type (&Peq)[2][2]){
-
-		//Set non equilibrium pressure tensor
-		Peq[0][0] = l.get_node(i,j).rho()*(velocity_set().cs*velocity_set().cs + l.get_node(i,j).u()* l.get_node(i,j).u()) ;
-		Peq[1][0] = l.get_node(i,j).rho()*( l.get_node(i,j).u()* l.get_node(i,j).v());
+		double rho = l.get_node(i,j).rho(); double u = l.get_node(i,j).u();	double v = l.get_node(i,j).v();	double cs = velocity_set().cs;
+		Peq[0][0] = rho*(cs*cs + u*u) ;
+		Peq[1][0] = rho*(u*v);
 		Peq[0][1] = Peq[1][0];
-		Peq[1][1] = l.get_node(i,j).rho()*(velocity_set().cs*velocity_set().cs + l.get_node(i,j).v()* l.get_node(i,j).v());
-		return;
-
+		Peq[1][1] = rho*(cs*cs + v*v);
 	}
 
 
@@ -199,14 +192,12 @@ public: // ctor
 		float_type du_y = (l.get_node(i+1,j).u()-l.get_node(i-1,j).u())/(q_i[4] + q_i[2]);
 		float_type dv_y = (l.get_node(i,j+1).v()-l.get_node(i,j-1).v())/(q_i[4] + q_i[2]);
 
-
+		double rho = l.get_node(i,j).rho(); double cs = velocity_set().cs;
 		//Set non equilibrium pressure tensor
-		Pneq[0][0] = - l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta*(du_x);
-		Pneq[1][0] = -l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta/2*(du_y + dv_x);
+		Pneq[0][0] = - rho*cs*cs/beta*(du_x);
+		Pneq[1][0] = -rho*cs*cs/beta/2*(du_y + dv_x);
 		Pneq[0][1] = Pneq[1][0];
-		Pneq[1][1] = - l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta*(dv_y);
-
-		return;
+		Pneq[1][1] = - rho*cs*cs/beta*(dv_y);
 	}
 
 	/**  @brief Calculate NonEq for without influence of Boundary */
@@ -221,14 +212,14 @@ public: // ctor
 
 		//Set non equilibrium pressure tensor
 		Pneq[0][0] = - l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta*(du_x);
-		Pneq[1][0] = -l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/2/beta*(du_y + dv_x);
+		Pneq[1][0] = - l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/2/beta*(du_y + dv_x);
 		Pneq[0][1] = Pneq[1][0];
 		Pneq[1][1] = - l.get_node(i,j).rho()*velocity_set().cs*velocity_set().cs/beta*(dv_y);
 
 		return;
 	}
 	//function to invert the population index
-	inline int inv_popl(const int& i) {
+	int inv_popl(const int& i) {
 		int inverse[9] = {0,3,4,1,2,7,8,5,6};
 		return inverse[i];
 	}
@@ -240,73 +231,50 @@ public: // ctor
 		//#pragma omp parallel for
 		for (unsigned int i=0; i<l.fluid_boundary_nodes.size(); ++i)
 		{
-			//bool dir_solid[9] = {false, false, false, false, false, false, false, false, false};
 			unsigned int x_i = l.fluid_boundary_nodes[i].coord.i;
 			unsigned int y_j = l.fluid_boundary_nodes[i].coord.j;
-			//the directions are already stored within the node
-			/*/Get direction to solid according to the c-directions
-			for( int j = 1; j < sizeof(dir_solid); ++j){
-				if (l.get_node(x_i+velocity_set().c[0][j],y_j+velocity_set().c[1][j]).has_flag_property("solid") )
-					dir_solid[j] = true;
-			} */
-
-			//Get fraction of fluid between current node and the adjacent node (1 if adjacent node is on or outside the solid)
-			/*std::vector<int> i_d;  //the information recorded by this i_d is contained in missing_populations vector
-			for (int j=0; j < sizeof(dir_solid); ++j)
-			{
-				if (dir_solid[j]){
-					i_d.push_back(j);
-				}
-				// NO ADVECTION DURING BC!!!
-				//Advect the direction away from Solid
-				else{
-					l.get_node(x_i+velocity_set().c[0][j], y_j + velocity_set().c[1][j]).f(j) = l.get_node(x_i, y_j).f(j);
-				}
-			}*/
-			std::vector<int> i_d = l.fluid_boundary_nodes[i].return_missing_populations(); //contains the direction in which solid is encountered
-			//utgt
+			//std::cout << "Applying curved BC for "<<x_i << " " << y_j << std::endl;
+			std::vector<int> i_d(l.get_node(x_i,y_j).return_missing_populations()); //contains the direction in which solid is encountered
 			float_type utgt[2] = {0,0};
 			float_type rho_bb = 0;
 			float_type rho_s = 0;
 			float_type rho_0 = 1;
 			float_type q_i[9] = {1,1,1,1,1,1,1,1,1};
 
-
-			for (int j = 0; j < i_d.size(); ++j)
+			for (unsigned int j = 0; j < i_d.size(); ++j)
 			{
 				//Velocities away from the solid (for the missing populations D bar )
 				int c_x = -velocity_set().c[0][i_d[j]];
 				int c_y = -velocity_set().c[1][i_d[j]];
-
 				//get q_i for the direction given by i_d[j]
-				//q_i[i_d[j]] = get_qi(x_i, y_j, x_i - c_x, y_j - c_y);
 				q_i[i_d[j]] = get_qi( l.fluid_boundary_nodes[i], i_d[j] );
-
-				//get u_f,i
-				float_type u_fi[2] = { l.get_node(x_i+c_x,y_j+c_y).u(), l.get_node(x_i+c_x,y_j+c_y).v()};
-
+				//get u_f,i for the fluid node (in the opposite direction from the one where solid is encountered)
+				float_type u_fi[2] = {l.get_node(x_i+c_x,y_j+c_y).u(), l.get_node(x_i+c_x,y_j+c_y).v()};
+				//std::cout << "q_i["<<i_d[j]<<"] = " << q_i[i_d[j]] << " Out of " << i_d.size() << " & u_fi = {" << u_fi[0] << "," << u_fi[1] << "}" ;
 				//calc utgt part
 				utgt[0] += (q_i[i_d[j]]* u_fi[0] + Cyl_vel[0])/(1+q_i[i_d[j]])/i_d.size();
 				utgt[1] += (q_i[i_d[j]]* u_fi[1] + Cyl_vel[1])/(1+q_i[i_d[j]])/i_d.size();
-
+				//wall velocity
 				float_type u_w_i = Cyl_vel[0];
 				float_type v_w_i = Cyl_vel[1];
-
 				//get rho_s
 				rho_s += 6*rho_0*velocity_set().W[i_d[j]]*(c_x*u_w_i + c_y*v_w_i);
 				//adjusting the bounce-back populations (the D-bar populations, which are inverse of the missing_populations)
-				l.fluid_boundary_nodes[i].f( inv_popl(i_d[j]) ) = l.get_node(x_i, y_j).f(i_d[j]);
+				l.get_node(x_i, y_j).f( inv_popl(i_d[j]) ) = l.get_node(x_i, y_j).f(i_d[j]);
 
 			}
 
-			for(int j = 0; j < velocity_set().size ; ++j){
+			for(unsigned int j = 0; j < velocity_set().size ; ++j){
 				//rho_bb += l.get_node(x_i, y_j).f(j);
-				rho_bb += l.fluid_boundary_nodes[i].f(j);
+				rho_bb += l.get_node(x_i, y_j).f(j);
 			}
 
 			//rho_tgt
 			float_type rho_tgt = rho_bb + rho_s;
 
+			l.get_node(x_i, y_j).rho() = rho_tgt;
+			l.get_node(x_i, y_j).u() = utgt[0];
+			l.get_node(x_i, y_j).u() = utgt[1];
 			//Calculate missing populations
 			float_type Peq[2][2];
 			calc_Peq(x_i, y_j, Peq);
@@ -314,9 +282,9 @@ public: // ctor
 			calc_Pneq(x_i, y_j, /*dir_solid,*/ q_i, Pneq);
 			float_type f_new;
 
-			std::cout << "Peq: " << Peq[0][0] << " /" << Peq[0][1] << " /" << Peq[1][0] << " /" << Peq[1][1] << " /" << std::endl;
+			//std::cout << "Peq: " << Peq[0][0] << " /" << Peq[0][1] << " /" << Peq[1][0] << " /" << Peq[1][1] << " /" << std::endl;
 
-			for (int j = 0; j < i_d.size(); ++j)
+			for (unsigned int j = 0; j < i_d.size(); ++j)
 			{
 				//Reset population with first two parts of grads' approximation
 				//f_new = velocity_set().W[i_d[j]]*(l.get_node(x_i, y_j).rho()*(1 + (velocity_set().c[0][ inv_popl(i_d[j]) ]*l.get_node(x_i, y_j).u() + velocity_set().c[1][ inv_popl(i_d[j]) ]*l.get_node(x_i, y_j).v())/velocity_set().cs/velocity_set().cs));
@@ -333,8 +301,8 @@ public: // ctor
 				}
 				f_new *= velocity_set().W[i_d[j]];
 				l.get_node(x_i, y_j).f( inv_popl(i_d[j]) ) = f_new;
-				if (!std::isnan(f_new))
-					std::cout << "F_ new_ missing: " << f_new << std::endl;
+				//if (!std::isnan(f_new))
+					//std::cout << "F_ new_ missing: " << f_new << std::endl;
 			}
 		}
 	}
