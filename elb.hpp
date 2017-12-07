@@ -109,6 +109,10 @@ double get_alpha(const node& n, double* feq) {
       break;
       //continue;
     }
+    if(steps > 12){
+      flag = true;
+      break;
+    }
     alpha = alpha - /*s*/(Haf-Hf)/Hpr ;
 
     //if (alpha > alphamax2)

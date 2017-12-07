@@ -62,13 +62,15 @@ public: // ctor
 	void initialize()
 	{
 		//Initialize Cyclinder
-		Cyl_center[0] = l.nx/2-l.nx/6;
-		Cyl_center[1] = l.ny/2;
-		Cyl_radius = l.nx/6;
+		Cyl_center_0[0] = l.nx/2-l.nx/6;
+		Cyl_center_0[1] = l.ny/2;
+		Cyl_center[0] = Cyl_center_0[0];
+		Cyl_center[1] = Cyl_center_0[1];
+		Cyl_radius = l.nx/12;
 		Cyl_vel[0] = 0.0;
 		Cyl_vel[1] = 0.0;
 
-		l.add_wallCylinder(Cyl_center, Cyl_radius);
+		//l.add_wallCylinder(Cyl_center, Cyl_radius);
 
 		//Init B.C.
 		u_inlet = 0.01;
@@ -84,7 +86,8 @@ public: // ctor
 				if( !(l.get_node(i,j).has_flag_property("solid")) )
 				{
 					//Initialize flow around Cylinder
-					ux = 0.01;
+					//ux = u_inlet;
+					ux = 0.0;
 					uy = 0.0;
 					rho = 1;
 					l.get_node(i,j).u()  = ux;
@@ -97,6 +100,8 @@ public: // ctor
 				}
 				else
 				{
+					l.get_node(i,j).u()  = 0.0;
+					l.get_node(i,j).v()  = 0.0;
 					l.get_node(i,j).rho() = 10;
 					//for inside the solid, initialize with 0 value for populations
 					for (unsigned int k=0; k<velocity_set().size; ++k)
@@ -231,6 +236,21 @@ public: // ctor
 		//#pragma omp parallel for
 		for (unsigned int i=0; i<l.fluid_boundary_nodes.size(); ++i)
 		{
+			//Set to equilibrium with zero velocity
+			/*float_type ux = 0.0;
+			float_type uy = 0.0;
+			float_type rho = 1;
+			l.fluid_boundary_nodes[i].u()  = ux;
+			l.fluid_boundary_nodes[i].v()  = uy;
+			l.fluid_boundary_nodes[i].rho() = rho;
+			for (unsigned int k=0; k<velocity_set().size; ++k)
+			{
+				//l.fluid_boundary_nodes[i].f(k)=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
+				l.fluid_boundary_nodes[i].f(k)=velocity_set().W[k]; //for ux=0 uy=0 rho=1
+			}
+			*/
+
+
 			unsigned int x_i = l.fluid_boundary_nodes[i].coord.i;
 			unsigned int y_j = l.fluid_boundary_nodes[i].coord.j;
 			//std::cout << "Applying curved BC for "<<x_i << " " << y_j << std::endl;
@@ -279,7 +299,7 @@ public: // ctor
 			float_type Peq[2][2];
 			calc_Peq(x_i, y_j, Peq);
 			float_type Pneq[2][2];
-			calc_Pneq(x_i, y_j, /*dir_solid,*/ q_i, Pneq);
+			calc_Pneq(x_i, y_j, q_i, Pneq);
 			float_type f_new;
 
 			//std::cout << "Peq: " << Peq[0][0] << " /" << Peq[0][1] << " /" << Peq[1][0] << " /" << Peq[1][1] << " /" << std::endl;
@@ -304,6 +324,7 @@ public: // ctor
 				//if (!std::isnan(f_new))
 					//std::cout << "F_ new_ missing: " << f_new << std::endl;
 			}
+			
 		}
 	}
 
@@ -441,7 +462,7 @@ public: // ctor
 	/** @brief Apply Boundary Conditions on left wall  */
 	void left_wall_bc(){
 		//Inlet Conditions
-		unsigned int runUptime = 0;
+		unsigned int runUptime = 100;
 		float_type u_x;
 
 		if(time < runUptime)
@@ -485,6 +506,7 @@ public: // ctor
 
 		//calculation rho,ux,uy at each lattice point then eqbm populations (for each element of velocity set)
 		double ux,uy,rho,feq;
+		float_type ave_rho = 0;
 
 		for (int j=0; j<static_cast<int>(l.ny); ++j)
 		{
@@ -504,6 +526,7 @@ public: // ctor
 					l.get_node(i,j).rho()=rho;
 					l.get_node(i,j).u()   = ux;
 					l.get_node(i,j).v()   = uy;
+					ave_rho += rho/(l.nx*l.ny);
 
 					//collide populations
 					#pragma omp parallel for /*num_threads(8)*/
@@ -513,16 +536,53 @@ public: // ctor
 						l.get_node(i,j).f(k)+=2.*beta*(feq-l.get_node(i,j).f(k));
 					}
 				}
+				
 			}
 		}
+		l.s_a_rho = ave_rho;
 	}
 
 	/** @brief Adaption of the Cylinder position  */
 	void Adapt_Cyl()
 	{
-		// **************************
-		// * fill in your code here *
-		// **************************
+
+		
+		float_type rho=l.s_a_rho,ux=Cyl_vel[0],uy=Cyl_vel[1];
+		float_type f_solid[9];
+		for (unsigned int k=0; k<velocity_set().size; ++k)
+		{
+			f_solid[k]=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
+		}
+
+		for(unsigned int k = 0 ; k< l.solid_nodes.size() ; ++k) {
+			int i = l.solid_nodes[k].coord.i;
+			int j = l.solid_nodes[k].coord.j;
+			l.get_node(i,j).u()  = ux;
+			l.get_node(i,j).v()  = uy;
+			l.get_node(i,j).rho() = rho;
+			for (unsigned int h=0; h<velocity_set().size; ++h)
+				l.get_node(i,j).f(h) = f_solid[h];
+		}
+
+
+
+
+		//Delete the fluid boundary nodes from the step before
+		l.delete_fluid_boundary_nodes();
+		l.delete_solids();
+
+		//Move as as sinus oszillation
+		float_type f = 0.05;
+		float_type y_move = Cyl_radius/2;
+		float_type omega = f/2/M_PI;
+		Cyl_center[0] = Cyl_center_0[0];
+		Cyl_center[1] = Cyl_center_0[1] + y_move * sin(omega*time);
+		Cyl_vel[0] = 0.0;
+		Cyl_vel[1] = y_move * omega * cos(omega*time);
+
+		std::cout << "Cylx: " << Cyl_center[0] << "Cyly: " << Cyl_center[1] << "Cyl v: " << Cyl_vel[1]<< std::endl;	 
+
+		l.add_wallCylinder(Cyl_center, Cyl_radius);
 
 		//Steps to implement the boundary in every timestep in case of a moving solid
 
@@ -611,6 +671,7 @@ public: // members
 	unsigned int output_freq;  ///< file output frequency
 	unsigned int output_index; ///< index for file naming
 	float_type Cyl_center[2];
+	float_type Cyl_center_0[2];
 	float_type Cyl_radius;
 	float_type Cyl_vel[2];
 	float_type rho_inlet;

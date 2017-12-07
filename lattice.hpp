@@ -361,6 +361,7 @@ public: // members
 	const unsigned int real_ny;               ///< extent in y direction including buffers
 	const unsigned int real_size;             ///< total number of nodes including buffers
 	const unsigned int n_populations;         ///< number of populations
+	float_type s_a_rho;
 	std::vector<std::vector<float_type> > f;  ///< population data
 	std::vector<float_type> rho;              ///< density data
 	std::vector<float_type> u;                ///< flow x-velocity data
