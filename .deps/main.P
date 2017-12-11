@@ -143,7 +143,7 @@ main.o: main.cpp /usr/include/stdc-predef.h simulation.hpp H_root.hpp \
  /usr/include/x86_64-linux-gnu/c++/6/bits/c++io.h \
  /usr/include/c++/6/bits/fstream.tcc /usr/include/c++/6/cassert \
  /usr/include/assert.h /usr/include/c++/6/sstream \
- /usr/include/c++/6/bits/sstream.tcc visualization.hpp opengl.hpp \
+ /usr/include/c++/6/bits/sstream.tcc elb.hpp visualization.hpp opengl.hpp \
  /usr/include/GL/glew.h /usr/include/GL/glu.h /usr/include/GL/gl.h \
  /usr/include/GL/freeglut.h /usr/include/GL/freeglut_std.h \
  /usr/include/c++/6/stdlib.h /usr/include/GL/freeglut_ext.h \
@@ -311,7 +311,7 @@ main.cpp /usr/include/stdc-predef.h simulation.hpp H_root.hpp :
  /usr/include/x86_64-linux-gnu/c++/6/bits/c++io.h :
  /usr/include/c++/6/bits/fstream.tcc /usr/include/c++/6/cassert :
  /usr/include/assert.h /usr/include/c++/6/sstream :
- /usr/include/c++/6/bits/sstream.tcc visualization.hpp opengl.hpp :
+ /usr/include/c++/6/bits/sstream.tcc elb.hpp visualization.hpp opengl.hpp :
  /usr/include/GL/glew.h /usr/include/GL/glu.h /usr/include/GL/gl.h :
  /usr/include/GL/freeglut.h /usr/include/GL/freeglut_std.h :
  /usr/include/c++/6/stdlib.h /usr/include/GL/freeglut_ext.h :

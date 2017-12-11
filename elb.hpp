@@ -7,14 +7,14 @@
 
 #include"velocity_set.hpp"
 #include "lattice.hpp"
-#include"Eigen/Dense"
+//#include<Eigen/Dense>
 #include<iostream>
 #include<cmath>
 using namespace lb;
 //function to get the entropic lattice boltzmann coefficients A Bx and By
 //and store them in the array whose pointer has been passed as an argument
 
-void get_elbeq_coeffs(double* x, const double& p, const double& pux, const double& puy) {
+/*void get_elbeq_coeffs(double* x, const double& p, const double& pux, const double& puy) {
     double Eabs=1e-14, Erel=1e-10;
     Eigen::VectorXd X(3); X.setZero();
     Eigen::VectorXd delX(3);
@@ -52,6 +52,7 @@ void get_elbeq_coeffs(double* x, const double& p, const double& pux, const doubl
     for (int i=0 ; i<3 ; ++i)
       x[i] = X(i);
 }
+*/
 
 //function for finding alpha
 double get_alpha(const node& n, double* feq) {
@@ -61,24 +62,24 @@ double get_alpha(const node& n, double* feq) {
   //double* X=new double[3];
   double alphamax = 10;
   //get_elbeq_coeffs(X,n.rho(),n.rho()*n.u(),n.rho()*n.v());
-  /*Eigen::VectorXd feq(9);*/ Eigen::VectorXd delta(9);
+  /*Eigen::VectorXd feq(9);*/ std::vector<double> delta(9);
   for (int i=0 ; i<9 ; ++i) {
   //  feq(i) = velocity_set().W[i] * std::exp(X[0] + X[1]*velocity_set().c[0][i] + X[2]*velocity_set().c[1][i]);
-    delta(i) = feq[i] - n.f(i);
-    if (delta(i)<0)
+    delta[i] = feq[i] - n.f(i);
+    if (delta[i]<0)
     {
-      double alphaimax = fabs(n.f(i) / delta(i));
+      double alphaimax = fabs(n.f(i) / delta[i]);
       if (alphaimax < alphamax)
         alphamax = alphaimax;
     }
-    //if(fabs(delta(i)/n.f(i)) < Erel)
-    //if(fabs(delta(i)/feq[i]) < Erel)
-    if(fabs(delta(i)) < 1e-3) //condition for being cose to equilibrium 1e-3 working
+    //if(fabs(delta[i]/n.f(i)) < Erel)
+    //if(fabs(delta[i]/feq[i]) < Erel)
+    if(fabs(delta[i]) < 1e-3) //condition for being cose to equilibrium 1e-3 working
       ++stupidcount;
   }
   if (stupidcount == 9)
     return 2.;
-  if (alphamax <= 2)
+  if (alphamax <= 2 )
     return alphamax;
 
 //const auto alphamax2 = alphamax;
@@ -96,8 +97,8 @@ double get_alpha(const node& n, double* feq) {
     alphamax = alpha;
     double Haf=0.,Hpr=0.;
     for (int i=0 ; i<9 ; ++i){
-      Haf+= (n.f(i) + alpha*delta(i))*std::log( (n.f(i) + alpha*delta(i))/velocity_set().W[i]);
-      Hpr+= delta(i)*std::log( (n.f(i) + alpha*delta(i))/velocity_set().W[i]);
+      Haf+= (n.f(i) + alpha*delta[i])*std::log( (n.f(i) + alpha*delta[i])/velocity_set().W[i]);
+      Hpr+= delta[i]*std::log( (n.f(i) + alpha*delta[i])/velocity_set().W[i]);
     }
   //  std::cout << "H prime value : " << Hpr << std::endl;
     if (Hpr < 1e-8) { //condition for smallness of h prime

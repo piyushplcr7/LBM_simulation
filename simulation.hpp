@@ -10,6 +10,7 @@
 #include "H_root.hpp"
 #include "lattice.hpp"
 #include <sstream>
+#include "elb.hpp"
 //#include <iostream>
 //#include <cmath>
 
@@ -70,11 +71,14 @@ public: // ctor
 		Cyl_vel[0] = 0.0;
 		Cyl_vel[1] = 0.0;
 
-		//l.add_wallCylinder(Cyl_center, Cyl_radius);
+		l.add_wallCylinder(Cyl_center, Cyl_radius);
+		flag_moving_cyl = true;
 
 		//Init B.C.
 		u_inlet = 0.01;
+		runUptime = 0;
 		rho_inlet = 1;
+		bool flag_Complete_Init = true;
 		//const float_type pi(std::acos(-1.0));
 
 		//#pragma omp parallel for
@@ -86,8 +90,8 @@ public: // ctor
 				if( !(l.get_node(i,j).has_flag_property("solid")) )
 				{
 					//Initialize flow around Cylinder
-					//ux = u_inlet;
-					ux = 0.0;
+					if(flag_Complete_Init) {ux = u_inlet;}
+					else{ux = 0.0;}
 					uy = 0.0;
 					rho = 1;
 					l.get_node(i,j).u()  = ux;
@@ -102,7 +106,7 @@ public: // ctor
 				{
 					l.get_node(i,j).u()  = 0.0;
 					l.get_node(i,j).v()  = 0.0;
-					l.get_node(i,j).rho() = 10;
+					l.get_node(i,j).rho() = 1;
 					//for inside the solid, initialize with 0 value for populations
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
@@ -462,7 +466,6 @@ public: // ctor
 	/** @brief Apply Boundary Conditions on left wall  */
 	void left_wall_bc(){
 		//Inlet Conditions
-		unsigned int runUptime = 100;
 		float_type u_x;
 
 		if(time < runUptime)
@@ -505,8 +508,9 @@ public: // ctor
 		// **************************
 
 		//calculation rho,ux,uy at each lattice point then eqbm populations (for each element of velocity set)
-		double ux,uy,rho,feq;
+		double ux,uy,rho,feq, alpha;
 		float_type ave_rho = 0;
+		const int n_solid = l.solid_nodes.size();
 
 		for (int j=0; j<static_cast<int>(l.ny); ++j)
 		{
@@ -526,25 +530,53 @@ public: // ctor
 					l.get_node(i,j).rho()=rho;
 					l.get_node(i,j).u()   = ux;
 					l.get_node(i,j).v()   = uy;
-					ave_rho += rho/(l.nx*l.ny);
+					ave_rho += rho/(l.nx*l.ny-n_solid);
 
 					//collide populations
-					#pragma omp parallel for /*num_threads(8)*/
+					#pragma omp parallel for 
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
 						feq=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
 						l.get_node(i,j).f(k)+=2.*beta*(feq-l.get_node(i,j).f(k));
 					}
+					//collide populations entropic
+					/*#pragma omp parallel for
+					for (unsigned int k=0; k<velocity_set().size; ++k)
+					{
+						feq=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
+					}
+					alpha = get_alpha(l.get_node(i,j), &feq);
+					if (alpha !=2) {std::cout << "Alpha : " << alpha << std::endl;}
+					
+					#pragma omp parallel for
+					for (unsigned int k=0; k<velocity_set().size; ++k)
+					{
+						l.get_node(i,j).f(k)+=2.*beta*alpha*(feq-l.get_node(i,j).f(k));
+					}
+					*/
 				}
 				
 			}
 		}
+
 		l.s_a_rho = ave_rho;
+		//std::cout << "Rho_ave; " << ave_rho << " //" << time <<std::endl;
 	}
 
 	/** @brief Adaption of the Cylinder position  */
 	void Adapt_Cyl()
 	{
+		//Move as as sinus oszillation
+		float_type f = 0.008;
+		float_type y_move = Cyl_radius/2;
+		float_type omega = f/2/M_PI;
+		Cyl_center[0] = Cyl_center_0[0];
+		Cyl_center[1] = Cyl_center_0[1] + y_move * sin(omega*time);
+		Cyl_vel[0] = 0.0;
+		Cyl_vel[1] = y_move * omega * cos(omega*time);
+
+		//std::cout << "Cylx: " << Cyl_center[0] << "Cyly: " << Cyl_center[1] << "Cyl v: " << Cyl_vel[1]<< std::endl;
+
 
 		
 		float_type rho=l.s_a_rho,ux=Cyl_vel[0],uy=Cyl_vel[1];
@@ -554,6 +586,8 @@ public: // ctor
 			f_solid[k]=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
 		}
 
+
+		// Update with new Properties of all nodes(old position) inside the solid
 		for(unsigned int k = 0 ; k< l.solid_nodes.size() ; ++k) {
 			int i = l.solid_nodes[k].coord.i;
 			int j = l.solid_nodes[k].coord.j;
@@ -565,24 +599,25 @@ public: // ctor
 		}
 
 
-
-
 		//Delete the fluid boundary nodes from the step before
 		l.delete_fluid_boundary_nodes();
 		l.delete_solids();
 
-		//Move as as sinus oszillation
-		float_type f = 0.05;
-		float_type y_move = Cyl_radius/2;
-		float_type omega = f/2/M_PI;
-		Cyl_center[0] = Cyl_center_0[0];
-		Cyl_center[1] = Cyl_center_0[1] + y_move * sin(omega*time);
-		Cyl_vel[0] = 0.0;
-		Cyl_vel[1] = y_move * omega * cos(omega*time);
-
-		std::cout << "Cylx: " << Cyl_center[0] << "Cyly: " << Cyl_center[1] << "Cyl v: " << Cyl_vel[1]<< std::endl;	 
-
+		
+		// Add new nodes of new position
 		l.add_wallCylinder(Cyl_center, Cyl_radius);
+
+
+		// Update Properties of all nodes of new position inside the solid
+		for(unsigned int k = 0 ; k< l.solid_nodes.size() ; ++k) {
+			int i = l.solid_nodes[k].coord.i;
+			int j = l.solid_nodes[k].coord.j;
+			l.get_node(i,j).u()  = ux;
+			l.get_node(i,j).v()  = uy;
+			l.get_node(i,j).rho() = rho;
+			for (unsigned int h=0; h<velocity_set().size; ++h)
+				l.get_node(i,j).f(h) = f_solid[h];
+		}
 
 		//Steps to implement the boundary in every timestep in case of a moving solid
 
@@ -621,7 +656,8 @@ public: // ctor
 		advect();
 		wall_bc();
 		collide();
-		Adapt_Cyl();
+		if(flag_moving_cyl)
+			Adapt_Cyl();
 
 		// file io
 		if ( file_output && ( ((time+1) % output_freq) == 0 || time == 0 ) )
@@ -668,6 +704,7 @@ public: // members
 	const float_type beta;     ///< LB parameter beta
 	unsigned int time;         ///< simulation time
 	bool file_output;          ///< flag whether to write files
+	bool flag_moving_cyl;
 	unsigned int output_freq;  ///< file output frequency
 	unsigned int output_index; ///< index for file naming
 	float_type Cyl_center[2];
@@ -676,6 +713,7 @@ public: // members
 	float_type Cyl_vel[2];
 	float_type rho_inlet;
 	float_type u_inlet;
+	unsigned int runUptime;
 };
 
 } // lb
