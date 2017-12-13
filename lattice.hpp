@@ -196,6 +196,7 @@ public: // members
 	unsigned int index;    ///< Index for looking up data in the lattice
 	coordinate<int> coord; ///< Coordinate of node's position
 	std::vector<int> missing_populations; ///<Contains the indices of missing populations (for Fluid Boundary Nodes, empty otherwise)
+	std::vector<float_type> q_i; ///<Contains the indices of missing populations (for Fluid Boundary Nodes, empty otherwise)
 };
 
 /**

@@ -40,7 +40,7 @@ public: // ctor
 	  shift(velocity_set().size),
 	  Re(_Re),
 	  Vmax(_Vmax),
-	  visc( /*filled in your code here*/ /*0.0015*/ Vmax*nx/Re),
+	  visc( /*filled in your code here*/ /*0.0015*/ Vmax*nx/40/Re),
 	  beta( /*filled in your code here*/ /*0.9911*/ 1./(6*visc+1)),
 	  time(0),
 	  file_output(false), // set to true if you want to write files
@@ -63,11 +63,11 @@ public: // ctor
 	void initialize()
 	{
 		//Initialize Cyclinder
-		Cyl_center_0[0] = l.nx/2-l.nx/6;
-		Cyl_center_0[1] = l.ny/2;
+		Cyl_radius = l.nx/40;
+		Cyl_center_0[0] = l.nx/2;//Cyl_radius*10;
+		Cyl_center_0[1] = l.ny/2;//Cyl_radius*10;
 		Cyl_center[0] = Cyl_center_0[0];
 		Cyl_center[1] = Cyl_center_0[1];
-		Cyl_radius = l.nx/12;
 		Cyl_vel[0] = 0.0;
 		Cyl_vel[1] = 0.0;
 
@@ -75,7 +75,7 @@ public: // ctor
 		flag_moving_cyl = true;
 
 		//Init B.C.
-		u_inlet = 0.01;
+		u_inlet = 0.05;
 		runUptime = 0;
 		rho_inlet = 1;
 		bool flag_Complete_Init = true;
@@ -104,9 +104,9 @@ public: // ctor
 				}
 				else
 				{
-					l.get_node(i,j).u()  = 0.0;
-					l.get_node(i,j).v()  = 0.0;
-					l.get_node(i,j).rho() = 1;
+					l.get_node(i,j).u()  = Cyl_vel[0];
+					l.get_node(i,j).v()  = Cyl_vel[1];
+					l.get_node(i,j).rho() = 1.0;
 					//for inside the solid, initialize with 0 value for populations
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
@@ -240,21 +240,6 @@ public: // ctor
 		//#pragma omp parallel for
 		for (unsigned int i=0; i<l.fluid_boundary_nodes.size(); ++i)
 		{
-			//Set to equilibrium with zero velocity
-			/*float_type ux = 0.0;
-			float_type uy = 0.0;
-			float_type rho = 1;
-			l.fluid_boundary_nodes[i].u()  = ux;
-			l.fluid_boundary_nodes[i].v()  = uy;
-			l.fluid_boundary_nodes[i].rho() = rho;
-			for (unsigned int k=0; k<velocity_set().size; ++k)
-			{
-				//l.fluid_boundary_nodes[i].f(k)=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
-				l.fluid_boundary_nodes[i].f(k)=velocity_set().W[k]; //for ux=0 uy=0 rho=1
-			}
-			*/
-
-
 			unsigned int x_i = l.fluid_boundary_nodes[i].coord.i;
 			unsigned int y_j = l.fluid_boundary_nodes[i].coord.j;
 			//std::cout << "Applying curved BC for "<<x_i << " " << y_j << std::endl;
@@ -298,7 +283,7 @@ public: // ctor
 
 			l.get_node(x_i, y_j).rho() = rho_tgt;
 			l.get_node(x_i, y_j).u() = utgt[0];
-			l.get_node(x_i, y_j).u() = utgt[1];
+			l.get_node(x_i, y_j).v() = utgt[1];
 			//Calculate missing populations
 			float_type Peq[2][2];
 			calc_Peq(x_i, y_j, Peq);
@@ -449,7 +434,7 @@ public: // ctor
 			//IMMEDIATE BOUNCE BACK CONDITION
 			//#pragma omp parallel for
 			for (int i=1; i<static_cast<int>(l.nx); ++i)
-			//iteration over bottom buffers (filled due to up and down avection)
+			//iteration over bottom buffers (filled due to up and down advection)
 			{
 				//south direction
 				l.get_node(i,j).f(2)=l.get_node(i,j).f(4);
@@ -567,9 +552,9 @@ public: // ctor
 	void Adapt_Cyl()
 	{
 		//Move as as sinus oszillation
-		float_type f = 0.008;
-		float_type y_move = Cyl_radius/2;
-		float_type omega = f/2/M_PI;
+		float_type f = 0.0008;
+		float_type y_move = Cyl_radius/2; // A: in Paper
+		float_type omega = f*2*M_PI;
 		Cyl_center[0] = Cyl_center_0[0];
 		Cyl_center[1] = Cyl_center_0[1] + y_move * sin(omega*time);
 		Cyl_vel[0] = 0.0;
@@ -578,7 +563,7 @@ public: // ctor
 		//std::cout << "Cylx: " << Cyl_center[0] << "Cyly: " << Cyl_center[1] << "Cyl v: " << Cyl_vel[1]<< std::endl;
 
 
-		
+		//Calculate solid equilibrium population with new properties
 		float_type rho=l.s_a_rho,ux=Cyl_vel[0],uy=Cyl_vel[1];
 		float_type f_solid[9];
 		for (unsigned int k=0; k<velocity_set().size; ++k)
