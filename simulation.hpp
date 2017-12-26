@@ -10,6 +10,8 @@
 #include "H_root.hpp"
 #include "lattice.hpp"
 #include <sstream>
+#include <iostream>
+#include <fstream>
 #include "elb.hpp"
 //#include <iostream>
 //#include <cmath>
@@ -40,8 +42,8 @@ public: // ctor
 	  shift(velocity_set().size),
 	  Re(_Re),
 	  Vmax(_Vmax),
-	  visc( /*filled in your code here*/ /*0.0015*/ Vmax*nx/40/Re),
-	  beta( /*filled in your code here*/ /*0.9911*/ 1./(6*visc+1)),
+	  visc(Vmax*nx/40/Re),
+	  beta(1./(6*visc+1)),
 	  time(0),
 	  file_output(false), // set to true if you want to write files
 	  output_freq(100),
@@ -70,9 +72,10 @@ public: // ctor
 		Cyl_center[1] = Cyl_center_0[1];
 		Cyl_vel[0] = 0.0;
 		Cyl_vel[1] = 0.0;
-
+		//force.open("Force.txt",std::ios::out);
+		//force << std::setw(10) << "Fx: " << std::setw(10) << "Fy: " << "\n";
 		l.add_wallCylinder(Cyl_center, Cyl_radius);
-		flag_moving_cyl = true;
+		flag_moving_cyl = !true;
 
 		//Init B.C.
 		u_inlet = 0.05;
@@ -143,11 +146,8 @@ public: // ctor
 						else
 							l.f[k][rtindex+shift[k]]=l.f[k][rtindex];
 						}
-				//}
 			}
 		}
-
-
 	}
 
 	/**  @brief calculate smaller root of quadratic function */
@@ -228,7 +228,7 @@ public: // ctor
 		return;
 	}
 	//function to invert the population index
-	int inv_popl(const int& i) {
+	int inv_popl(const int& i) const{
 		int inverse[9] = {0,3,4,1,2,7,8,5,6};
 		return inverse[i];
 	}
@@ -313,7 +313,7 @@ public: // ctor
 				//if (!std::isnan(f_new))
 					//std::cout << "F_ new_ missing: " << f_new << std::endl;
 			}
-			
+
 		}
 	}
 
@@ -394,7 +394,7 @@ public: // ctor
 		}
 		//Free Slip
 		else{
-			//#pragma omp parallel for
+			#pragma omp parallel for
 			for (int i=1; i<static_cast<int>(l.nx)-1; ++i)
 			//iteration over the top buffers (filled due to up and down avection)
 			{
@@ -432,7 +432,7 @@ public: // ctor
 		//FreeSlip
 		else{
 			//IMMEDIATE BOUNCE BACK CONDITION
-			//#pragma omp parallel for
+			#pragma omp parallel for
 			for (int i=1; i<static_cast<int>(l.nx); ++i)
 			//iteration over bottom buffers (filled due to up and down advection)
 			{
@@ -518,7 +518,7 @@ public: // ctor
 					ave_rho += rho/(l.nx*l.ny-n_solid);
 
 					//collide populations
-					#pragma omp parallel for 
+					#pragma omp parallel for
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
 						feq=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
@@ -532,7 +532,7 @@ public: // ctor
 					}
 					alpha = get_alpha(l.get_node(i,j), &feq);
 					if (alpha !=2) {std::cout << "Alpha : " << alpha << std::endl;}
-					
+
 					#pragma omp parallel for
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
@@ -540,7 +540,7 @@ public: // ctor
 					}
 					*/
 				}
-				
+
 			}
 		}
 
@@ -588,7 +588,7 @@ public: // ctor
 		l.delete_fluid_boundary_nodes();
 		l.delete_solids();
 
-		
+
 		// Add new nodes of new position
 		l.add_wallCylinder(Cyl_center, Cyl_radius);
 
@@ -623,6 +623,28 @@ public: // ctor
 		l.add_wallCylinder(Cyl_center, Cyl_radius)
 		*/
 	}
+
+	/** @brief Calculate force on the solid object in the flow */
+	std::pair<double,double> eval_F () const {
+		double Fx=0.,Fy=0.;
+		for (unsigned int it=0; it<l.fluid_boundary_nodes.size(); ++it) //summing for all fluid_boundary_nodes
+		{
+			unsigned int xb = l.fluid_boundary_nodes[it].coord.i; //coordinates of fluid boundary node
+			unsigned int yb = l.fluid_boundary_nodes[it].coord.j;
+			std::vector<int> D(l.get_node(xb,yb).return_missing_populations()); //vector of intersecting populations, inverse of D-bar
+			for (unsigned int i = 0; i < D.size(); ++i)
+			{
+				unsigned int xs = xb + velocity_set().c[0][D[i]]; //coordinates of solid node
+				unsigned int ys = yb + velocity_set().c[1][D[i]];
+				double common =  (l.get_node(xb,yb).f( inv_popl(D[i]) )
+													+l.get_node(xs,ys).f( D[i] ) );
+				Fx += velocity_set().c[0][D[i]] * common;
+				Fy += velocity_set().c[1][D[i]] * common;
+			}
+		}
+		return std::make_pair(Fx,Fy);
+	}
+
 	/** @brief Apply all Boundary Conditions */
 	void wall_bc()
 	{
@@ -631,7 +653,6 @@ public: // ctor
 		bottom_wall_bc();
 		left_wall_bc();
 		right_wall();
-
 		//periodic_bc();
 	}
 
@@ -641,6 +662,8 @@ public: // ctor
 		advect();
 		wall_bc();
 		collide();
+		std::tie(Fx_,Fy_) = eval_F();
+		//force << std::setw(10) << Fx_ << std::setw(10) << Fy_ << "\n";
 		if(flag_moving_cyl)
 			Adapt_Cyl();
 
@@ -698,6 +721,7 @@ public: // members
 	float_type Cyl_vel[2];
 	float_type rho_inlet;
 	float_type u_inlet;
+	double Fx_,Fy_;
 	unsigned int runUptime;
 };
 
