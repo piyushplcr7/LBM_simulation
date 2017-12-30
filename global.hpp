@@ -4,6 +4,7 @@
  *   @brief global typdefs etc
  */
 
+//
 #ifndef LB_GLOBAL_HPP_INCLUDED
 #define LB_GLOBAL_HPP_INCLUDED
 
