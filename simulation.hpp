@@ -51,9 +51,7 @@ public: // ctor
 	{
 		// define amount to shift populations for advection (according to the array model of domain)
 		for (unsigned int i=0; i<velocity_set().size; ++i)
-		{
 			shift[i]=velocity_set().c[0][i] + l.real_nx * velocity_set().c[1][i];
-		}
 	}
 
 	/**
@@ -493,7 +491,7 @@ public: // ctor
 		// **************************
 
 		//calculation rho,ux,uy at each lattice point then eqbm populations (for each element of velocity set)
-		double ux,uy,rho,feq, alpha;
+		double ux,uy,rho,feq[9], alpha=2.;
 		float_type ave_rho = 0;
 		const int n_solid = l.solid_nodes.size();
 
@@ -516,29 +514,29 @@ public: // ctor
 					l.get_node(i,j).u()   = ux;
 					l.get_node(i,j).v()   = uy;
 					ave_rho += rho/(l.nx*l.ny-n_solid);
-
+					/*
 					//collide populations
 					#pragma omp parallel for
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
 						feq=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
 						l.get_node(i,j).f(k)+=2.*beta*(feq-l.get_node(i,j).f(k));
-					}
+					}*/
 					//collide populations entropic
-					/*#pragma omp parallel for
+					#pragma omp parallel for
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
-						feq=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
+						feq[k]=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
 					}
-					alpha = get_alpha(l.get_node(i,j), &feq);
-					if (alpha !=2) {std::cout << "Alpha : " << alpha << std::endl;}
+					alpha = get_alpha(l.get_node(i,j), feq);
+					//if (alpha !=2) {std::cout << "Alpha : " << alpha << std::endl;}
 
 					#pragma omp parallel for
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
-						l.get_node(i,j).f(k)+=2.*beta*alpha*(feq-l.get_node(i,j).f(k));
+						l.get_node(i,j).f(k) += beta*alpha*(feq[k]-l.get_node(i,j).f(k));
 					}
-					*/
+
 				}
 
 			}

@@ -56,15 +56,11 @@ using namespace lb;
 
 //function for finding alpha
 double get_alpha(const node& n, double* feq) {
-  //std::cout << "Test 1!" <<std::endl;
-  double Erel=1e-3;
-  int stupidcount =0;
-  //double* X=new double[3];
+  double Erel= 1e-3, Ealpha = 1e-3;
+  int stupidcount = 0;
   double alphamax = 10;
-  //get_elbeq_coeffs(X,n.rho(),n.rho()*n.u(),n.rho()*n.v());
-  /*Eigen::VectorXd feq(9);*/ std::vector<double> delta(9);
+  std::vector<double> delta(9);
   for (int i=0 ; i<9 ; ++i) {
-  //  feq(i) = velocity_set().W[i] * std::exp(X[0] + X[1]*velocity_set().c[0][i] + X[2]*velocity_set().c[1][i]);
     delta[i] = feq[i] - n.f(i);
     if (delta[i]<0)
     {
@@ -72,58 +68,47 @@ double get_alpha(const node& n, double* feq) {
       if (alphaimax < alphamax)
         alphamax = alphaimax;
     }
-    //if(fabs(delta[i]/n.f(i)) < Erel)
-    //if(fabs(delta[i]/feq[i]) < Erel)
-    if(fabs(delta[i]) < 1e-3) //condition for being cose to equilibrium 1e-3 working
-      ++stupidcount;
+    if(fabs(delta[i]/n.f(i)) < Erel) //condition for being cose to equilibrium 1e-3 working
+      ++stupidcount; //determine how many populations are close to eqbm
   }
-  if (stupidcount == 9)
+
+  if (stupidcount == 9) //If all are close to eqbm
     return 2.;
+
   if (alphamax <= 2 )
     return alphamax;
 
-//const auto alphamax2 = alphamax;
-    double alpha=2;
+  double alpha=2;
   //else get the value by newton rhapson
   double Hf=0.;
   for (int i=0 ; i<9 ; ++i){
     Hf+= n.f(i)*std::log(n.f(i)/velocity_set().W[i]);
   }
-  bool flag = false; double troublesaver = 2;
+  bool flag = false;
   int steps = 1;
-  //double s=1.0;
+
   do {
+
     ++steps;
-    alphamax = alpha;
+    alphamax = alpha; //alphamax used as the old value of alpha for newton Rhapson
     double Haf=0.,Hpr=0.;
     for (int i=0 ; i<9 ; ++i){
       Haf+= (n.f(i) + alpha*delta[i])*std::log( (n.f(i) + alpha*delta[i])/velocity_set().W[i]);
       Hpr+= delta[i]*std::log( (n.f(i) + alpha*delta[i])/velocity_set().W[i]);
     }
-  //  std::cout << "H prime value : " << Hpr << std::endl;
+
     if (Hpr < 1e-8) { //condition for smallness of h prime
-      //if (flag == true )
-        //troublesaver = ;
       flag = true;
-      std::cout << "H too low! " << std::endl;
-      //alpha=troublesaver + std::pow(-1/2,steps);
-      break;
-      //continue;
+      break; //  std::cout << "H too low! " << std::endl;
     }
-    if(steps > 12){
+    if(steps > 12)
+    {
       flag = true;
       break;
     }
     alpha = alpha - /*s*/(Haf-Hf)/Hpr ;
-
-    //if (alpha > alphamax2)
-  //  {
-  //    alpha = 0.98*alphamax2;
-  //    s*=0.99;
-  //  }
-    //std::cout << "Alpha: " << alpha << "Error: " << fabs((alpha-alphamax)/alphamax) <<std::endl;
-  //  std::cout << "In the newton rhapson loop!" << std::endl;
-  } while( fabs((alpha-alphamax)/alphamax) > Erel);
+  } while( fabs((alpha-alphamax)/alphamax) > Ealpha);
+  
   if (flag)
     return 2.;
 //std::cout << "Alpha calculated by newton rhapson" << std::endl;
