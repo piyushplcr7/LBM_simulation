@@ -124,7 +124,7 @@ public: // ctor
 	 *
 	 *  Include periodic boundary conditions here also
 	 */
-	void advect() //advection to be done
+	void advect() //advection to be done in parallel
 	{
 		unsigned int rtindex,lbindex;
 		for (int j=0; j<static_cast<int>(l.ny); ++j)
