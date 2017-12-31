@@ -58,7 +58,7 @@ using namespace lb;
 double get_alpha(const node& n, double* feq) {
   double Erel= 1e-3, Ealpha = 1e-3;
   int stupidcount = 0;
-  double alphamax = 10;
+  double alphamax = 5;
   std::vector<double> delta(9);
   for (int i=0 ; i<9 ; ++i) {
     delta[i] = feq[i] - n.f(i);
@@ -68,7 +68,7 @@ double get_alpha(const node& n, double* feq) {
       if (alphaimax < alphamax)
         alphamax = alphaimax;
     }
-    if(fabs(delta[i]/n.f(i)) < Erel) //condition for being cose to equilibrium 1e-3 working
+    if(fabs(delta[i]/*/n.f(i)*/) < Erel) //condition for being cose to equilibrium 1e-3 working
       ++stupidcount; //determine how many populations are close to eqbm
   }
 
@@ -78,7 +78,7 @@ double get_alpha(const node& n, double* feq) {
   if (alphamax <= 2 )
     return alphamax;
 
-  double alpha=2;
+  double alpha=2, constalphamax = alphamax;
   //else get the value by newton rhapson
   double Hf=0.;
   for (int i=0 ; i<9 ; ++i){
@@ -112,8 +112,10 @@ double get_alpha(const node& n, double* feq) {
   if (flag)
     return 2.;
 //std::cout << "Alpha calculated by newton rhapson" << std::endl;
-//  if (alpha < 10 && alpha > 0)
+  if (alpha < constalphamax)
   return alpha;
+  else
+  return constalphamax;
 //  else
 //  return 10.;
 }
