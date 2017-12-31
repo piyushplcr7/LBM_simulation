@@ -503,8 +503,10 @@ public: // ctor
 		for(int j = 1; j <static_cast<int>(l.ny)-1 ; ++j)
 		{
 			l.get_node(i,j).f(3) = l.get_node(i-1,j).f(3);
-			l.get_node(i,j).f(6) = l.get_node(i-1,j+1).f(6);
-			l.get_node(i,j).f(7) = l.get_node(i-1,j-1).f(7);
+			l.get_node(i,j).f(6) = l.get_node(i-1,j).f(6);
+			//l.get_node(i,j).f(6) = l.get_node(i-1,j+1).f(6);
+			//l.get_node(i,j).f(7) = l.get_node(i-1,j-1).f(7);
+			l.get_node(i,j).f(7) = l.get_node(i-1,j).f(7);
 		}
 	}
 
@@ -694,7 +696,7 @@ l.s_a_rho,ux=Cyl_vel[0],uy=Cyl_vel[1];
 		top_wall_bc();
 		bottom_wall_bc();
 		left_wall_bc();
-		//right_wall();
+		right_wall();
 		//periodic_bc();
 	}
 
