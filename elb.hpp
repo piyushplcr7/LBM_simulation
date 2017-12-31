@@ -68,7 +68,7 @@ double get_alpha(const node& n, double* feq) {
       if (alphaimax < alphamax)
         alphamax = alphaimax;
     }
-    if(fabs(delta[i]/n.f(i)) < Erel) //condition for being cose to equilibrium 1e-3 working
+    if(fabs(delta[i]/*/n.f(i)*/) < Erel) //condition for being cose to equilibrium 1e-3 working
       ++stupidcount; //determine how many populations are close to eqbm
   }
 
