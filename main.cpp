@@ -9,9 +9,9 @@
 
 int main(int argc, char *argv[])
 {
-	//omp_set_num_threads(std::max(omp_get_max_threads(),omp_get_num_procs()));
-	omp_set_num_threads(1);
-	unsigned int nx = 600, ny = 600, Time = 100;
+	omp_set_num_threads(std::max(omp_get_max_threads(),omp_get_num_procs()));
+	//omp_set_num_threads(1);
+	unsigned int nx = 600, ny = 600, Time = 50000;
 	float Vmax = 0.05, Re = 500;
 	lb::simulation* sim = new lb::simulation(nx,ny,Re,Vmax);
 	sim->initialize();
@@ -57,6 +57,8 @@ int main(int argc, char *argv[])
 		{
 			sim->step();
 			force << std::setw(15) << sim->Fx_ << std::setw(15) << sim->Fy_ << "\n";
+			if (i == 14000)
+				sim->save_populations();
 		}
 		force.close();
 	#endif

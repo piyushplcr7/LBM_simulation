@@ -126,25 +126,48 @@ public: // ctor
 	 */
 	void advect() //advection to be done in parallel
 	{
-		unsigned int rtindex,lbindex;
-		for (int j=0; j<static_cast<int>(l.ny); ++j)
+		for (unsigned int k=0; k<velocity_set().size; ++k)
 		{
-			for (int i=0; i<static_cast<int>(l.nx); ++i)
+
+			if (shift[k] == 1 || shift[k] == -1)
 			{
-				//advect everything, even the solid nodes, if bcs are not implemented correctly, if will be seen
-					//right top index or increasing index
-					rtindex= l.real_nx*(j+l.buffer_size) + i + l.buffer_size;
-					//left bottom index or decreasing index
-					lbindex= l.real_nx*(l.ny-1-j+l.buffer_size) + l.nx-1 -i + l.buffer_size;
-					//PUSH ADVECTION!
-					for (unsigned int k=0; k<velocity_set().size; ++k)
-						{
-						if (shift[k]>0) //if shift is positive, using decreasing index
-							l.f[k][lbindex+shift[k]]=l.f[k][lbindex];
-						else
-							l.f[k][rtindex+shift[k]]=l.f[k][rtindex];
-						}
+				#pragma omp parallel for schedule(static)
+				for (int j=0; j<static_cast<int>(l.ny); ++j)
+				{
+					for (int i=0; i<static_cast<int>(l.nx); ++i)
+					{
+							//right top index or increasing index
+							unsigned int rtindex= l.real_nx*(j+l.buffer_size) + i + l.buffer_size;
+							//left bottom index or decreasing index
+							unsigned int lbindex= l.real_nx*(l.ny-1-j+l.buffer_size) + l.nx-1 -i + l.buffer_size;
+							//PUSH ADVECTION!
+								if (shift[k]>0) //if shift is positive, using decreasing index
+									l.f[k][lbindex+shift[k]]=l.f[k][lbindex];
+								else
+									l.f[k][rtindex+shift[k]]=l.f[k][rtindex];
+					}
+				}
 			}
+
+			else if (shift[k] > 1 || shift[k] < -1)
+			{
+				for (int j=0; j<static_cast<int>(l.ny); ++j)
+				{
+					for (int i=0; i<static_cast<int>(l.nx); ++i)
+					{
+							//right top index or increasing index
+							unsigned int rtindex= l.real_nx*(j+l.buffer_size) + i + l.buffer_size;
+							//left bottom index or decreasing index
+							unsigned int lbindex= l.real_nx*(l.ny-1-j+l.buffer_size) + l.nx-1 -i + l.buffer_size;
+							//PUSH ADVECTION!
+								if (shift[k]>0) //if shift is positive, using decreasing index
+									l.f[k][lbindex+shift[k]]=l.f[k][lbindex];
+								else
+									l.f[k][rtindex+shift[k]]=l.f[k][rtindex];
+					}
+				}
+			}
+
 		}
 	}
 
@@ -235,7 +258,7 @@ public: // ctor
 	void curved_wall_bc()
 	{
 		//Curved Wall
-		//#pragma omp parallel for
+		#pragma omp parallel for schedule(dynamic)
 		for (unsigned int i=0; i<l.fluid_boundary_nodes.size(); ++i)
 		{
 			unsigned int x_i = l.fluid_boundary_nodes[i].coord.i;
@@ -392,7 +415,7 @@ public: // ctor
 		}
 		//Free Slip
 		else{
-			#pragma omp parallel for
+			#pragma omp parallel for schedule(static)
 			for (int i=1; i<static_cast<int>(l.nx)-1; ++i)
 			//iteration over the top buffers (filled due to up and down avection)
 			{
@@ -430,7 +453,7 @@ public: // ctor
 		//FreeSlip
 		else{
 			//IMMEDIATE BOUNCE BACK CONDITION
-			#pragma omp parallel for
+			#pragma omp parallel for schedule(static)
 			for (int i=1; i<static_cast<int>(l.nx); ++i)
 			//iteration over bottom buffers (filled due to up and down advection)
 			{
@@ -458,6 +481,7 @@ public: // ctor
 
 		int i = 0;
 		float_type uy = 0;
+		#pragma omp parallel for schedule(dynamic)
 		for(int j=0; j <static_cast<int>(l.ny) ; ++j){
 			l.get_node(i,j).u()  = u_inlet;
 			l.get_node(i,j).v()  = uy;
@@ -473,35 +497,30 @@ public: // ctor
 	/** @brief Apply Boundary Conditions on right wall  */
 	void right_wall(){
 		//No Boundary Condition
-		unsigned int i = l.nx -1;
-
-		for(int j = 1; j <static_cast<int>(l.ny)-1 ; ++j){
+		const unsigned int i = l.nx -1;
+		#pragma omp parallel for schedule(dynamic)
+		for(int j = 1; j <static_cast<int>(l.ny)-1 ; ++j)
+		{
 			l.get_node(i,j).f(3) = l.get_node(i-1,j).f(3);
 			l.get_node(i,j).f(6) = l.get_node(i-1,j+1).f(6);
 			l.get_node(i,j).f(7) = l.get_node(i-1,j-1).f(7);
-
 		}
 	}
 
 	/** @brief collide the populations */
 	void collide()
 	{
-		// **************************
-		// * fill in your code here *
-		// **************************
-
 		//calculation rho,ux,uy at each lattice point then eqbm populations (for each element of velocity set)
-		double ux,uy,rho,feq[9], alpha=2.;
 		float_type ave_rho = 0;
 		const int n_solid = l.solid_nodes.size();
-
+		#pragma omp parallel for schedule(static)
 		for (int j=0; j<static_cast<int>(l.ny); ++j)
 		{
 			for (int i=0; i<static_cast<int>(l.nx); ++i)
 			{	//calculation of rho, ux and uy for the node
 				if( !(l.get_node(i,j).has_flag_property("solid")) )
 				{
-					rho=0.,ux=0.,uy=0.;
+					double ux=0.,uy=0.,rho=0.,feq[9], alpha=2.;
 					for (unsigned int temp=0; temp<velocity_set().size; ++temp)
 						{
 						rho+=l.get_node(i,j).f(temp);
@@ -510,28 +529,19 @@ public: // ctor
 						}
 					ux=ux/rho;
 					uy=uy/rho;
-					l.get_node(i,j).rho()=rho;
+					l.get_node(i,j).rho() = rho;
 					l.get_node(i,j).u()   = ux;
 					l.get_node(i,j).v()   = uy;
-					ave_rho += rho/(l.nx*l.ny-n_solid);
-					/*
-					//collide populations
-					#pragma omp parallel for
-					for (unsigned int k=0; k<velocity_set().size; ++k)
-					{
-						feq=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
-						l.get_node(i,j).f(k)+=2.*beta*(feq-l.get_node(i,j).f(k));
-					}*/
-					//collide populations entropic
-					#pragma omp parallel for
+					//#pragma omp critical
+					//ave_rho += rho/(l.nx*l.ny-n_solid);
+					//#pragma omp parallel for
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
 						feq[k]=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
 					}
-					alpha = get_alpha(l.get_node(i,j), feq);
-					//if (alpha !=2) {std::cout << "Alpha : " << alpha << std::endl;}
 
-					#pragma omp parallel for
+					alpha = get_alpha(l.get_node(i,j), feq);
+
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
 						l.get_node(i,j).f(k) += beta*alpha*(feq[k]-l.get_node(i,j).f(k));
@@ -542,8 +552,7 @@ public: // ctor
 			}
 		}
 
-		l.s_a_rho = ave_rho;
-		//std::cout << "Rho_ave; " << ave_rho << " //" << time <<std::endl;
+	//	l.s_a_rho = ave_rho;
 	}
 
 	/** @brief Adaption of the Cylinder position  */
@@ -562,7 +571,8 @@ public: // ctor
 
 
 		//Calculate solid equilibrium population with new properties
-		float_type rho=l.s_a_rho,ux=Cyl_vel[0],uy=Cyl_vel[1];
+		float_type rho=		//sim->l.f[0][sim->l.index(2,0)] = 3;
+l.s_a_rho,ux=Cyl_vel[0],uy=Cyl_vel[1];
 		float_type f_solid[9];
 		for (unsigned int k=0; k<velocity_set().size; ++k)
 		{
@@ -625,6 +635,7 @@ public: // ctor
 	/** @brief Calculate force on the solid object in the flow */
 	std::pair<double,double> eval_F () const {
 		double Fx=0.,Fy=0.;
+		#pragma omp parallel for schedule(dynamic)
 		for (unsigned int it=0; it<l.fluid_boundary_nodes.size(); ++it) //summing for all fluid_boundary_nodes
 		{
 			unsigned int xb = l.fluid_boundary_nodes[it].coord.i; //coordinates of fluid boundary node
@@ -636,11 +647,27 @@ public: // ctor
 				unsigned int ys = yb + velocity_set().c[1][D[i]];
 				double common =  (l.get_node(xb,yb).f( inv_popl(D[i]) )
 													+l.get_node(xs,ys).f( D[i] ) );
-				Fx += velocity_set().c[0][D[i]] * common;
-				Fy += velocity_set().c[1][D[i]] * common;
+				#pragma omp critical
+				{
+					Fx += velocity_set().c[0][D[i]] * common;
+					Fy += velocity_set().c[1][D[i]] * common;
+				}
 			}
 		}
 		return std::make_pair(Fx,Fy);
+	}
+
+	void save_populations() {
+		std::ofstream populations;
+		populations.open("Populations.txt",std::ios::out);
+		/* Format [f0] [f1] [f2] .......; where [f0] is column of population 0*/
+		for (unsigned int i=0 ; i<l.real_size ; ++i )
+		{
+			for (unsigned int j=0 ; j<velocity_set().size ; ++j)
+				populations << std::setw(15) << l.f[j][i];
+			populations << "\n";
+		}
+		populations.close();
 	}
 
 	/** @brief Apply all Boundary Conditions */
@@ -650,7 +677,7 @@ public: // ctor
 		top_wall_bc();
 		bottom_wall_bc();
 		left_wall_bc();
-		right_wall();
+		//right_wall();
 		//periodic_bc();
 	}
 
