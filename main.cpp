@@ -16,6 +16,7 @@ int main(int argc, char *argv[])
 	lb::simulation* sim = new lb::simulation(nx,ny,Re,Vmax);
 	sim->initialize();
 	std::cout << *sim << std::endl;
+	sim->resume("Populations.txt");
 
 	#ifdef USE_OPENGL_VISUALIZATION
 
@@ -57,8 +58,8 @@ int main(int argc, char *argv[])
 		{
 			sim->step();
 			force << std::setw(15) << sim->Fx_ << std::setw(15) << sim->Fy_ << "\n";
-			if (i == 14000)
-				sim->save_populations();
+			//if (i == 14000)
+				//sim->save_populations();
 		}
 		force.close();
 	#endif

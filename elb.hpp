@@ -108,7 +108,7 @@ double get_alpha(const node& n, double* feq) {
     }
     alpha = alpha - /*s*/(Haf-Hf)/Hpr ;
   } while( fabs((alpha-alphamax)/alphamax) > Ealpha);
-  
+
   if (flag)
     return 2.;
 //std::cout << "Alpha calculated by newton rhapson" << std::endl;

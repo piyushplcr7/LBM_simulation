@@ -153,6 +153,7 @@ public: // ctor
 			{
 				for (int j=0; j<static_cast<int>(l.ny); ++j)
 				{
+					#pragma omp parallel for schedule(static)
 					for (int i=0; i<static_cast<int>(l.nx); ++i)
 					{
 							//right top index or increasing index
@@ -541,6 +542,8 @@ public: // ctor
 					}
 
 					alpha = get_alpha(l.get_node(i,j), feq);
+					//#pragma omp critical
+					//std::cout << alpha << std::endl;
 
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
@@ -670,6 +673,20 @@ l.s_a_rho,ux=Cyl_vel[0],uy=Cyl_vel[1];
 		populations.close();
 	}
 
+	void resume(std::string filename) {
+		std::ifstream filestream;
+		filestream.open(filename,std::ios::in);
+		for (unsigned int i=0 ; i<l.real_size ; ++i )
+		{
+			for (unsigned int j=0 ; j<velocity_set().size ; ++j)
+			{
+				double inp;
+				filestream >> inp;
+				l.f[j][i] = inp;
+			}
+		}
+		filestream.close();
+	}
 	/** @brief Apply all Boundary Conditions */
 	void wall_bc()
 	{
