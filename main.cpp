@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
 	lb::simulation* sim = new lb::simulation(nx,ny,Re,Vmax);
 	sim->initialize();
 	std::cout << *sim << std::endl;
-	sim->resume("Populations.txt");
+	//sim->resume("Populations.txt");
 
 	#ifdef USE_OPENGL_VISUALIZATION
 

@@ -13,6 +13,7 @@
 #include <iostream>
 #include <fstream>
 #include "elb.hpp"
+#include "flagella.hpp"
 //#include <iostream>
 //#include <cmath>
 
@@ -70,10 +71,33 @@ public: // ctor
 		Cyl_center[1] = Cyl_center_0[1];
 		Cyl_vel[0] = 0.0;
 		Cyl_vel[1] = 0.0;
+		l.add_wallCylinder(Cyl_center, Cyl_radius);
+		
+
 		//force.open("Force.txt",std::ios::out);
 		//force << std::setw(10) << "Fx: " << std::setw(10) << "Fy: " << "\n";
-		l.add_wallCylinder(Cyl_center, Cyl_radius);
+
 		flag_moving_cyl = !true;
+
+		if(flag_moving_cyl){
+			float_type f = 0.0008;
+			y_move = Cyl_radius/2; // A: in Paper
+			omega = f*2*M_PI;
+			Cyl_vel[1] = y_move * omega * cos(omega*time);
+		}
+		else{
+			y_move = 0; omega = 0;
+		}
+
+		//Init Flagella
+		flag_fla = true;
+		if (flag_fla){
+								//l ,  m   , k_1 , k_2 , x, y, ymove, omega
+			middle = new flagella(10.0, 1.0, 0.05, 0.05, Cyl_center_0[0]+Cyl_radius , Cyl_center_0[1] , y_move, omega );
+			
+			middle->uptCoord(fla_coord);
+		}
+
 
 		//Init B.C.
 		u_inlet = 0.05;
@@ -508,6 +532,28 @@ public: // ctor
 		}
 	}
 
+	//apply Boundary condition on flagella
+	void flagella_bc(){
+
+/*
+		//Get the boundary nodes and population
+		middle->uptCoord(fla_coord);
+
+		Q1 = calculate moment on first rigid body with coordinate fla_coord[x_i]
+		fla_coord[0] -> x_1
+		fla_coord[1] -> y_1
+		fla_coord[2] -> x_2
+		fla_coord[3] -> y_2
+
+
+		Q2 = calculate moment on second rigid body
+		fla_coord[2] -> x_1
+		fla_coord[3] -> y_1
+		fla_coord[4] -> x_2
+		fla_coord[5] -> y_2
+*/
+	}
+
 	/** @brief collide the populations */
 	void collide()
 	{
@@ -562,12 +608,9 @@ public: // ctor
 	void Adapt_Cyl()
 	{
 		//Move as as sinus oszillation
-		float_type f = 0.0008;
-		float_type y_move = Cyl_radius/2; // A: in Paper
-		float_type omega = f*2*M_PI;
 		Cyl_center[0] = Cyl_center_0[0];
 		Cyl_center[1] = Cyl_center_0[1] + y_move * sin(omega*time);
-		Cyl_vel[0] = 0.0;
+		Cyl_vel[0]  = 0.0;
 		Cyl_vel[1] = y_move * omega * cos(omega*time);
 
 		//std::cout << "Cylx: " << Cyl_center[0] << "Cyly: " << Cyl_center[1] << "Cyl v: " << Cyl_vel[1]<< std::endl;
@@ -691,6 +734,7 @@ l.s_a_rho,ux=Cyl_vel[0],uy=Cyl_vel[1];
 	void wall_bc()
 	{
 		curved_wall_bc();
+		flagella_bc();
 		top_wall_bc();
 		bottom_wall_bc();
 		left_wall_bc();
@@ -701,6 +745,7 @@ l.s_a_rho,ux=Cyl_vel[0],uy=Cyl_vel[1];
 	/** @brief LB step */
 	void step()
 	{
+		float_type real_timestep = 1 * 0.01;
 		advect();
 		wall_bc();
 		collide();
@@ -708,7 +753,11 @@ l.s_a_rho,ux=Cyl_vel[0],uy=Cyl_vel[1];
 		//force << std::setw(10) << Fx_ << std::setw(10) << Fy_ << "\n";
 		if(flag_moving_cyl)
 			Adapt_Cyl();
-
+		
+		if(flag_fla){
+			middle->updateX(time);
+			middle->step(Q1,Q2, real_timestep);
+		}
 		// file io
 		if ( file_output && ( ((time+1) % output_freq) == 0 || time == 0 ) )
 		{
@@ -755,16 +804,29 @@ public: // members
 	unsigned int time;         ///< simulation time
 	bool file_output;          ///< flag whether to write files
 	bool flag_moving_cyl;
+	bool flag_fla;
 	unsigned int output_freq;  ///< file output frequency
 	unsigned int output_index; ///< index for file naming
+
+	//Inlet
+	float_type rho_inlet;
+	float_type u_inlet;
+	unsigned int runUptime;
+
+	//Cylinder
 	float_type Cyl_center[2];
 	float_type Cyl_center_0[2];
 	float_type Cyl_radius;
 	float_type Cyl_vel[2];
-	float_type rho_inlet;
-	float_type u_inlet;
+	float_type y_move;
+	float_type omega;
 	double Fx_,Fy_;
-	unsigned int runUptime;
+
+	//flagella
+	flagella* middle;
+	float_type Q1;
+	float_type Q2;
+	float_type fla_coord[6];
 };
 
 } // lb
