@@ -42,12 +42,15 @@ public: // ctor
 	  shift(velocity_set().size),
 	  Re(_Re),
 	  Vmax(_Vmax),
-	  visc(Vmax*nx/40/Re),
+		Cyl_radius(nx/80),
+	  visc(Vmax*Cyl_radius*2/Re),
 	  beta(1./(6*visc+1)),
 	  time(0),
 	  file_output(false), // set to true if you want to write files
 	  output_freq(100),
-	  output_index(0)
+	  output_index(0),
+		flag_moving_cyl(true),
+		using_entropic(!true)
 	{
 		// define amount to shift populations for advection (according to the array model of domain)
 		for (unsigned int i=0; i<velocity_set().size; ++i)
@@ -63,8 +66,8 @@ public: // ctor
 	void initialize()
 	{
 		//Initialize Cyclinder
-		Cyl_radius = l.nx/40;
-		Cyl_center_0[0] = l.nx/2;//Cyl_radius*10;
+
+		Cyl_center_0[0] = l.nx/4;//Cyl_radius*10;
 		Cyl_center_0[1] = l.ny/2;//Cyl_radius*10;
 		Cyl_center[0] = Cyl_center_0[0];
 		Cyl_center[1] = Cyl_center_0[1];
@@ -73,7 +76,6 @@ public: // ctor
 		//force.open("Force.txt",std::ios::out);
 		//force << std::setw(10) << "Fx: " << std::setw(10) << "Fy: " << "\n";
 		l.add_wallCylinder(Cyl_center, Cyl_radius);
-		flag_moving_cyl = !true;
 
 		//Init B.C.
 		u_inlet = 0.05;
@@ -533,14 +535,19 @@ public: // ctor
 					l.get_node(i,j).rho() = rho;
 					l.get_node(i,j).u()   = ux;
 					l.get_node(i,j).v()   = uy;
-					//#pragma omp critical
-					//ave_rho += rho/(l.nx*l.ny-n_solid);
+
+					if (flag_moving_cyl)
+					{
+						#pragma omp atomic
+						ave_rho += rho;
+					}
 					//#pragma omp parallel for
 					for (unsigned int k=0; k<velocity_set().size; ++k)
 					{
 						feq[k]=rho*velocity_set().W[k]*(2.-sqrt(1.+3.*ux*ux))*(2.-sqrt(1.+3.*uy*uy))*pow((2.*ux+sqrt(1.+3.*ux*ux))/(1.-ux) ,velocity_set().c[0][k])*pow((2.*uy+sqrt(1.+3.*uy*uy))/(1.-uy) ,velocity_set().c[1][k]);
 					}
 
+					if (using_entropic)
 					alpha = get_alpha(l.get_node(i,j), feq);
 					//#pragma omp critical
 					//std::cout << alpha << std::endl;
@@ -554,8 +561,8 @@ public: // ctor
 
 			}
 		}
-
-	//	l.s_a_rho = ave_rho;
+		if (flag_moving_cyl)
+		l.s_a_rho = ave_rho/(l.nx*l.ny-n_solid);
 	}
 
 	/** @brief Adaption of the Cylinder position  */
@@ -574,8 +581,8 @@ public: // ctor
 
 
 		//Calculate solid equilibrium population with new properties
-		float_type rho=		//sim->l.f[0][sim->l.index(2,0)] = 3;
-l.s_a_rho,ux=Cyl_vel[0],uy=Cyl_vel[1];
+		//sim->l.f[0][sim->l.index(2,0)] = 3;
+		float_type rho = l.s_a_rho,ux=Cyl_vel[0],uy=Cyl_vel[1];
 		float_type f_solid[9];
 		for (unsigned int k=0; k<velocity_set().size; ++k)
 		{
@@ -750,21 +757,23 @@ public: // members
 	std::vector<int> shift;    ///< amount of nodes to shift each population in data structure during advection
 	const float_type Re;       ///< Reynolds number
 	const float_type Vmax;     ///< mean flow velocity
+	const float_type Cyl_radius;
 	const float_type visc;     ///< viscosity
 	const float_type beta;     ///< LB parameter beta
 	unsigned int time;         ///< simulation time
 	bool file_output;          ///< flag whether to write files
-	bool flag_moving_cyl;
 	unsigned int output_freq;  ///< file output frequency
 	unsigned int output_index; ///< index for file naming
 	float_type Cyl_center[2];
 	float_type Cyl_center_0[2];
-	float_type Cyl_radius;
+	//float_type Cyl_radius;
 	float_type Cyl_vel[2];
 	float_type rho_inlet;
 	float_type u_inlet;
 	double Fx_,Fy_;
 	unsigned int runUptime;
+	const bool flag_moving_cyl;
+	const bool using_entropic;
 };
 
 } // lb
