@@ -18,6 +18,7 @@ CC = g++
 CFLAGS = -O3 -std=c++11 -fopenmp -Wall
 VISFLAG = -DUSE_OPENGL_VISUALIZATION
 LDFLAGS = -lgomp -lglut -lGLU -lGL -lGLEW -lX11 
+EFLAGS = -lgomp -lX11
 #-lgomp -lGLEW -lGL -lGLU -lglut -lX11
 OBJFILES = $(SOURCES:.cpp=.o)
 
@@ -25,7 +26,7 @@ all: build
 
 novis: $(OBJFILES) 
 	@echo -e "\033[1mLinking $(OBJFILES) to $(NAME)...\033[0m"
-	@$(CC) $(CFLAGS) $(OBJFILES) -o $(NAME) $(LDFLAGS)
+	@$(CC) $(CFLAGS) $(OBJFILES) -o $(NAME) $(EFLAGS)
 
 build: CFLAGS += $(VISFLAG)
 
