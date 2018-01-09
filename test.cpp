@@ -1,14 +1,11 @@
 #include<iostream>
 #include<array>
+#include"flagella.hpp"
 
 int main() {
-const std::array<std::array<int, 9>, 2> c = {{{{       0,       1,       0,      -1,       0,       1,      -1,      -1,       1}}, 
-	                                              {{       0,       0,       1,       0,      -1,       1,       1,      -1,      -1}}}};
+	flagella test(1, 1, 0.05, 0.05, 0, 0, 0, 0);
 
-for (int i=0; i<9;++i)
-	std::cout << c[0][i] << " " ;
-std::cout<<std::endl;
-for (int i=0; i<9;++i)
-	std::cout << c[1][i] << " " ;
-return 0;
+	for(int i = 0; i< 1000;++i){
+		test.step(0,0, 0.05);
+	}
 }

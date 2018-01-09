@@ -756,6 +756,7 @@ l.s_a_rho,ux=Cyl_vel[0],uy=Cyl_vel[1];
 		
 		if(flag_fla){
 			middle->updateX(time);
+			Q1 = 0.1*sin(time);
 			middle->step(Q1,Q2, real_timestep);
 		}
 		// file io
