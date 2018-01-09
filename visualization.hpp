@@ -1063,8 +1063,10 @@ public: // opengl callback functions
 		}
 		else 
 		{
-			if (xl >= dim_x) xl = dim_x-1; if(xl < 0) xl=0;
-			if (xh >= dim_x) xh = dim_x-1; if(xh < 0) xh=0;
+			if (xl >= dim_x) xl = dim_x-1;
+			if(xl < 0) xl=0;
+			if (xh >= dim_x) xh = dim_x-1;
+			if(xh < 0) xh=0;
 		}
 		if (periodic_y)
 		{
@@ -1073,8 +1075,10 @@ public: // opengl callback functions
 		}
 		else 
 		{
-			if (yl >= dim_y) yl = dim_y-1; if(yl < 0) yl=0;
-			if (yh >= dim_y) yh = dim_y-1; if(yh < 0) yh=0;
+			if (yl >= dim_y) yl = dim_y-1; 
+			if(yl < 0) yl=0;
+			if (yh >= dim_y) yh = dim_y-1; 
+			if(yh < 0) yh=0;
 		}
 		const float v0 = (1.0-ax)*field[(yl+buffer_size)*real_dim_x + xl + buffer_size] + ax*field[(yl+buffer_size)*real_dim_x + xh + buffer_size];
 		const float v1 = (1.0-ax)*field[(yh+buffer_size)*real_dim_x + xl + buffer_size] + ax*field[(yh+buffer_size)*real_dim_x + xh + buffer_size];
