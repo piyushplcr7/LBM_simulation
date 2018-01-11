@@ -92,8 +92,8 @@ public: // ctor
 		//Init Flagella
 		flag_fla = true;
 		if (flag_fla){
-								//l ,  m   , k_1 , k_2 , B_1,   B_2,   x, y, ymove, omega
-			middle = new flagella(10.0, 1.0, 0.05, 0.05, 0.005, 0.005, Cyl_center_0[0]+Cyl_radius , Cyl_center_0[1] , y_move, omega );
+								// n,  l , m  ,  k , 	B,   x, y, ymove, omega
+			middle = new flagella(2, 10.0, 1.0, 0.05, 0.005, Cyl_center_0[0]+Cyl_radius , Cyl_center_0[1] , y_move, omega );
 			
 			middle->uptCoord(fla_coord);
 		}

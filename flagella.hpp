@@ -11,15 +11,16 @@
 #include <boost/numeric/odeint/config.hpp>
 #include <boost/numeric/odeint.hpp>
 
+#include<fstream>
+
 typedef std::vector< double > state_type;
 using namespace std;
 
-
-
 class flagella{
 	
+	using float_type = double;
+
 	//Flagella
-	using float_type = float;
 	const int n;
 	const std::vector<float_type> l, m, k_spring;
 	const std::vector<float_type> B;
@@ -27,6 +28,7 @@ class flagella{
 	const float_type y_move;
 	const float_type omega;
 	std::vector<float_type> theta;
+	std::ofstream txt_a;
 
 	//variable dependent of time
 	state_type alpha;
@@ -37,6 +39,7 @@ class flagella{
 	float_type x_dd, y_dd;
 	std::vector<float_type> Q;
 	std::vector<std::vector<float_type>> x_vec;
+	bool flag_out;
 
 public:
 	//Vector Constructor
@@ -53,7 +56,8 @@ public:
 		alpha (2*n,0),
 		dd_alpha(n,0),
 		Q(n,0),
-		x_vec(n,{0,0})
+		x_vec(n,{0,0}),
+		flag_out(false)
 		{
 			x_d = .0;
 			x_dd = .0;
@@ -61,7 +65,10 @@ public:
 			y_dd = .0;
 			for( int i = 0; i<n ; ++i){ theta.push_back(1/12*m[i]*l[i]*l[i]) ;}
 
-			for( int i= 0; i<n; ++i){std::cout << std::setw(15) << "#alpha_" << std::to_string(i) << ": ";} std::cout <<std::endl;
+			txt_a.open("Alpha.txt",std::ios::out);
+			for( int i= 0; i<n; ++i)
+				txt_a << std::setw(15) << "#alpha_" << std::to_string(i) << ": "; 
+			txt_a <<std::endl;
 		}
 
 	//Uniform Constructor
@@ -78,15 +85,20 @@ public:
 		alpha (2*n,0),
 		dd_alpha(n,0),
 		Q (n,0),
-		x_vec(n,{0,0})
+		x_vec(n,{0,0}),
+		flag_out(false)
 		{
 			x_d = .0;
 			x_dd = .0;
 			y_d = y_move*omega* cos(.0);
 			y_dd = .0;
 			for( int i = 0; i<n ; ++i){ theta.push_back(1/12*m[i]*l[i]*l[i]) ;}
-			for( int i= 0; i<n; ++i){std::cout << std::setw(15) << "#alpha_" << std::to_string(i) << ": ";} std::cout <<std::endl;
-		}
+
+			txt_a.open("Alpha.txt",std::ios::out);
+			for( int i= 0; i<n; ++i)
+				txt_a << std::setw(15) << "#alpha_" << std::to_string(i) << ": "; 
+			txt_a <<std::endl;
+			}
 
 	void InitAngle(int i, float_type j){alpha[2*i]= j;}
 	void step(float_type dt);
@@ -111,18 +123,15 @@ public:
 void flagella::GetRHS(const state_type &x, state_type &dxdt, const double time){
 	
 	int k = 0;
-	//i iterates over the whole vector q_n = (alpha_1, alp_1_d, alp_1_dd, alp_2, alp_2_d, ...); [0, 2*n-1]
+	float_type part1, part2, part3, part4, partk, RHS;
+
+	//i iterates over the whole vector q_n = (alpha_1, alp_1_d,, alp_2, alp_2_d, ...); [0, 2*n-1]
 	//k iterates only over the elements of the flagella; [0, n-1]
 	for(int i = 0; i < 2*n; ++i){
-		float_type part1 = 0;
-		float_type part2 = 0;
-		float_type part3 = 0;
-		float_type part4 = 0;
-		float_type partk = 0;
+		part1 = 0; part2 = 0; part3 = 0; part4 = 0; partk = 0;
 
 		//alpha_k = x[2*k]
 		//alpha_d_k = x[2*k+1]
-		//alpha_dd_k = x[2*k + 2]
 
 		// if i == alpha and dxdt = alpha_d
 		if(i % 2 == 0){
@@ -130,18 +139,18 @@ void flagella::GetRHS(const state_type &x, state_type &dxdt, const double time){
 		}
 
 		//if i  == alpha_d and dxdt = alpha_dd
-		if(i % 2 == 1){
+		else if(i % 2 == 1){
 			if(i==0){ // First Row
-				dxdt[i] = Q[k] -k_spring[k]*(x[i-1])+k_spring[k+1]*(x[i+2]-x[i-1])- B[k]* x[i]- l[k]* ( 0.5 *m[k]+ sumMass(k+1, n))*(-x_dd *sin(x[2*k])+y_dd*cos(x[2*k]));
-				part1 = 0; part2 = 0;
+				RHS = Q[k] - k_spring[k]*(x[i-1])+k_spring[k+1]*(x[i+1]-x[i-1]) - B[k] * x[i] - l[k]* ( 0.5 *m[k]+ sumMass(k+1, n))*(-x_dd *sin(x[2*k])+y_dd*cos(x[2*k]));
+				part1 = 0; part3 = 0;
 				//Part 2 and 4
 				for(int j = k+1; j < n-1; ++j){
 					part2 = part2 + dd_alpha[j] * l[j]* l[k] *( 0.5 * m[j]+ sumMass(j+1, n))*cos(x[2*k]-x[2*j]);
 					part4 = part4 + x[j*2 + 1]*x[j*2 + 1] * l[j]* l[k] *( 0.5 * m[j]+ sumMass(j+1, n))*sin(x[2*k]-x[2*j]);
 				}
 			}
-			if(i==2*n-1){ //Last Row
-				dxdt[i] = Q[k] -k_spring[k]*(x[i-1]-x[i-4])- B[k]* x[i]- l[k]* ( 0.5 *m[k]+ sumMass(k+1, n))*(-x_dd *sin(x[2*k])+y_dd*cos(x[2*k]));
+			else if(i==2*n-1){ //Last Row
+				RHS = Q[k] -k_spring[k]*(x[i-1]-x[i-3])- B[k]* x[i]- l[k]* ( 0.5 *m[k]+ sumMass(k+1, n))*(-x_dd *sin(x[2*k])+y_dd*cos(x[2*k]));
 				part2 = 0; part4 = 0;
 				//Part 1 and 2
 				for(int j = 0; j < k-1; ++j){
@@ -150,7 +159,7 @@ void flagella::GetRHS(const state_type &x, state_type &dxdt, const double time){
 				}
 			}
 			else{ // Normal Row
-				dxdt[i] = Q[k] -k_spring[k]*(x[i-1]-x[i-4])+k_spring[k+1]*(x[i+2]-x[i-1])- B[k]* x[i] - l[k]* ( 0.5 *m[k]+ sumMass(k+1, n))*(-x_dd *sin(x[2*k])+y_dd*cos(x[2*k]));
+				RHS = Q[k] -k_spring[k]*(x[i-1]-x[i-3])+k_spring[k+1]*(x[i+1]-x[i-1])- B[k]* x[i] - l[k]* ( 0.5 *m[k]+ sumMass(k+1, n))*(-x_dd *sin(x[2*k])+y_dd*cos(x[2*k]));
 				//Part 1 and 3
 				for(int j = 0; j < k-1; ++j){
 					part1 = part1 + dd_alpha[j] * l[j]* l[k] *( 0.5 * m[k]+ sumMass(k+1, n))*cos(x[2*k]-x[2*j]);
@@ -164,22 +173,17 @@ void flagella::GetRHS(const state_type &x, state_type &dxdt, const double time){
 			}
 
 			partk = l[k]*l[k]*(0.25*m[k] + sumMass(k+1, n))+ theta[k];
-			dxdt[i] = (dxdt[i] -part1 - part2 -part2- part4)/partk;
-			//std::cout << "dd_alpha" << dd_alpha[0] <<  "//" << dd_alpha[1] <<  "//" <<dd_alpha[2] << std::endl;
-			//std::cout << part1 << "//" << part2 <<  "//" << part3 << "//" << part4 << "//" << partk << std::endl;
+			dxdt[i] = (RHS -part1 - part2 -part2- part4)/partk;
 			dd_alpha[k] = dxdt[i];
+			if(!(abs(part1) < 100 and  abs(part2) < 100 and abs(part3) < 100 and abs(part4) < 100))
+				flag_out = false;
+			if(flag_out){
+				std::cout << RHS << " // " << part1 << " // " << part2 <<  " // " << part3 << " // " << part4 << " // " << partk << std::endl;
+				std::cout << "dd_Alpha " << std::to_string(k) << ": " << dd_alpha[k] << " / d_Alpha " << std::to_string(k) << ": " << x[i] << " / Alpha " << std::to_string(k) << ": " << x[i-1] << std::endl;
+			}
 			k=k+1;
 		}
-		//if i == alpha_dd and dxdt = alpha_ddd
-		//if(i % 2 == 2){
-		//	dxdt[i] = 0;
-		//}
 	}
-
-	//Save second derivatives of the angle
-	//for(int k = 0; k <n; k++){
-	//	dd_alpha[k] = dxdt[2*k+1];
-	//}
 }
 
 
@@ -193,9 +197,10 @@ void flagella::step(float_type delta_t){
 	//for(int k = 0; k <n; k++){
 	//	alpha[2*k+1] = dd_alpha[k];
 	//}
+		
 	for( int i = 0; i<n; ++i)
-		std::cout << std::setw(15) << alpha[2*i];
-	std::cout << std::endl;
+		txt_a << std::setw(15) << alpha[2*i];
+	txt_a << std::endl;
 }
 
 //Update Coordinates
