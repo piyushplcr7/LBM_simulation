@@ -7,11 +7,11 @@
 
 int main() {
 	int time = 10000;
-	int ele = 3;
-	double l = 5;
-	double m = 0.1;
-	double k = 0.05;
-	double b = 0.2;
+	int ele = 5;
+	double l = 1.;
+	double m = 5.;
+	double k = 1.5;
+	double b = 1.;
 
 	/*std::vector<double> l_fla, m_fla, k_fla, B_fla;
 
@@ -30,14 +30,16 @@ int main() {
 
 	std::vector<double> Q = {0,0};
 	for(int i = 0; i<ele;++i){
-		test.InitAngle(i,0.3);
-		//test.InitAngle(i, sin(float(i)/ele*2*M_PI)*0.1);
+		test.InitAngle(i,1.5);
+		//test.InitAngle(i, sin(float(i)/ele*2*M_PI)*0);
 		//if(i%2 == 0) test.InitAngle(i, 0.1);
 		//if(i%2 == 1) test.InitAngle(i,-0.001);
 	}
+	test.InitAngle(0,0);
 
 	for(int i = 0; i< time;++i){
 		//Q[0] = 1*sin(i*100/time);
 		test.step(Q, 1);
 	}
+
 }
