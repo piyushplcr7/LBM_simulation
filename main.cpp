@@ -3,6 +3,7 @@
 #include "visualization.hpp"
 #endif
 #include <omp.h>
+#include <sys/stat.h>
 
 
 
@@ -47,8 +48,13 @@ int main(int argc, char *argv[])
 
 
 		//std::cout << sim->l << std::endl;
+		std::string file_name_basic = "Result/Fields/out";
+		mkdir("Result", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		mkdir("Result/Fields", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
 
 		std::ofstream force,v1,v2,v3,v4;
+		
 		force.open("Force.txt",std::ios::out);
 		v1.open("v_400_200.txt",std::ios::out);
 		v2.open("v_400_250.txt",std::ios::out);
@@ -69,6 +75,12 @@ int main(int argc, char *argv[])
 			v2 << std::setw(15) << sim->l.get_node(400,250).u() << std::setw(15) << sim->l.get_node(400,250).v() << "\n";
 			v3 << std::setw(15) << sim->l.get_node(600,200).u() << std::setw(15) << sim->l.get_node(600,200).v() << "\n";
 			v4 << std::setw(15) << sim->l.get_node(600,250).u() << std::setw(15) << sim->l.get_node(600,250).v() << "\n";
+			//Write to files
+			if(Time > 30000 and Time < 35000){
+				std::string file_name = file_name_basic + "_" + std::to_string(i) + ".txt";
+				sim->l.write_fields(file_name);
+			}
+
 			//if (i == 14000)
 				//sim->save_populations();
 		}

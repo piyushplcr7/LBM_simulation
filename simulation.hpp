@@ -49,7 +49,7 @@ public: // ctor
 	  file_output(false), // set to true if you want to write files
 	  output_freq(100),
 	  output_index(0),
-		flag_moving_cyl(true),
+		flag_moving_cyl(!true),
 		using_entropic(!true)
 	{
 		// define amount to shift populations for advection (according to the array model of domain)
