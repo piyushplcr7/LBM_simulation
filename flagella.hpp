@@ -211,10 +211,13 @@ void flagella::getRHSMatrix(const state_type &x, state_type &dxdt, const double 
 				Mat(i,j) = Matrix(i,j);
 			}
 		}
-
-		int info;
-		int ipiv[n];
-		Eigen::VectorXd x_star = Mat.fullPivLu().solve(RHS_d);
+		Eigen::VectorXd x_star;
+		if (n<=4){
+			x_star = Mat.inverse()*RHS_d;
+		}
+		else{
+			x_star = Mat.fullPivLu().solve(RHS_d);
+		}
 
 		for(int i = 0; i<n; ++i){
 			RHS(i) = RHS_d(i);

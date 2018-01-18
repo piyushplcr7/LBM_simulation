@@ -7,7 +7,7 @@
 
 int main() {
 	int time = 100;
-	int ele = 10;
+	int ele = 4;
 	double l = 1.;
 	double m = 5.;
 	double k = 1.5;
