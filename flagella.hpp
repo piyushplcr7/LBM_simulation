@@ -7,13 +7,19 @@
 
 #include "global.hpp"
 #include <cmath>
+#include <utility>
 
 #include <boost/numeric/odeint/config.hpp>
 #include <boost/numeric/odeint.hpp>
+#include <boost/numeric/ublas/io.hpp>
+#include <lapacke.h>
+#include <eigen3/Eigen/Dense>
 
 #include<fstream>
 
-typedef std::vector< double > state_type;
+//typedef std::vector< double > state_type;
+typedef boost::numeric::ublas::vector<double> state_type;
+typedef boost::numeric::ublas::matrix<double> matrix_type;
 using namespace std;
 
 class flagella{
@@ -34,8 +40,7 @@ class flagella{
 	float_type t;
 	float_type alpha_1_0;
 	state_type alpha;
-	std::vector<double> dd_alpha;
-	std::vector<double> dd_alpha_old;
+	state_type dd_alpha;
 
 	float_type x, y;
 	float_type x_d, y_d;
@@ -58,7 +63,7 @@ public:
 		y_move(_ymove),
 		alpha (2*n,0),
 		dd_alpha(n,0),
-		dd_alpha_old(n,0),
+		//dd_alpha_old(n,0),
 		Q(n,0),
 		x_vec(n,{0,0}),
 		flag_out(true),
@@ -89,7 +94,7 @@ public:
 		y_move(_ymove),
 		alpha (2*n,0),
 		dd_alpha(n,0),
-		dd_alpha_old(n,0),
+		//dd_alpha_old(n,0),
 		Q (n,0),
 		x_vec(n,{0,0}),
 		flag_out(true),
@@ -111,9 +116,20 @@ public:
 	void step(float_type dt);
 	void step(std::vector<float_type> _Q, float_type dt){Q = _Q; step(dt);}
 	void step(std::vector<float_type> Q){step(Q, 1.0);}
+	state_type stepRet(std::vector<float_type> _Q, float_type dt){step(_Q, dt); return alpha;}
+
+	std::vector<float> stepRetvec(std::vector<float_type> _Q, float_type dt){step(_Q, dt); return alpha2vec();}
+	std::vector<float> alpha2vec();
 
 	void GetRHS(const state_type &x, state_type &dxdt, const double time);
 	void getRHS2D(const state_type &x, state_type &dxdt, const double time);
+	void getRHSMatrix(const state_type &x, state_type &dxdt, const double time);
+	void getJacobiT(const state_type &x, matrix_type &J, const double time, state_type &dfdt);
+	void getJacobi(const state_type &x, matrix_type &J, const double time);
+
+	void writeOut(boost::numeric::ublas::matrix<double> M);
+	
+
 
 	//Coordinates
 	void updx();
@@ -146,6 +162,94 @@ void flagella::getRHS2D(const state_type &x, state_type &dxdt, const double time
 	dd_alpha[1] = dxdt[3];
  
 };	
+
+void flagella::getRHSMatrix(const state_type &x, state_type &dxdt, const double time){
+	boost::numeric::ublas::matrix<double>  Matrix (n,n);
+	boost::numeric::ublas::vector<double>  RHS (n);
+
+
+	int i = 0;
+	for( int k= 0; k<n; ++k){
+		i=2*k;
+		Matrix(k,k) = l[k]*l[k]*(0.25*m[k] + sumMass(k+1, n))+ theta[k];
+		if(k==0){
+			RHS[k] = Q[k] - k_spring[k]*(x[i])+k_spring[k+1]*(x[i+2]-x[i]) - B[k] * x[i+1] - l[k]* ( 0.5 *m[k]+ sumMass(k+1, n))*(-x_dd *sin(x[2*k])+y_dd*cos(x[2*k]));
+	        for (int j =k+1; j < n-2; ++j){
+	            Matrix(k,j) = l[j]* l[k] *( 0.5 * m[j]+ sumMass(j+1, n))*cos(x[2*k]-x[2*j]);
+	            RHS(k) = RHS(k) - x[j*2+1]*x[j*2+1] * l[j]* l[k] *( 0.5 * m[j]+ sumMass(j+1, n))*sin(x[2*k]-x[2*j]);
+			}
+		}
+		else if(k == n-1){
+			RHS(k) = Q[k] - k_spring[k]*(x[i]-x[i-2]) - B[k]*x[i+1] - l[k]* ( 0.5 *m[k]+ sumMass(k+1, n))*(-x_dd *sin(x[2*k])+y_dd*cos(x[2*k]));
+	        for (int j =0; j < k-1; ++j){
+	            Matrix(k,j) = l[j]* l[k] *( 0.5 * m[j]+ sumMass(j+1, n))*cos(x[2*k]-x[2*j]);
+	            RHS(k) = RHS(k) - x[j*2+1]*x[j*2+1] * l[j]* l[k] *( 0.5 * m[j]+ sumMass(j+1, n))*sin(x[2*k]-x[2*j]);
+			}	
+		}
+		else{
+			RHS(k) = Q[k] - k_spring[k]*(x[i]-x[i-2]) +k_spring[k+1]*(x[i+2]-x[i])- B[k]*x[i+1] - l[k]* ( 0.5 *m[k]+ sumMass(k+1, n))*(-x_dd *sin(x[2*k])+y_dd*cos(x[2*k]));
+	        for (int j =0; j < k-1; ++j){
+	            Matrix(k,j) = l[j]* l[k] *( 0.5 * m[j]+ sumMass(j+1, n))*cos(x[2*k]-x[2*j]);
+	            RHS(k) = RHS(k) - x[j*2+1]*x[j*2+1] * l[j]* l[k] *( 0.5 * m[j]+ sumMass(j+1, n))*sin(x[2*k]-x[2*j]);
+			}
+			for (int j =k+1; j < n-2; ++j){
+	            Matrix(k,j) = l[j]* l[k] *( 0.5 * m[j]+ sumMass(j+1, n))*cos(x[2*k]-x[2*j]);
+	            RHS(k) = RHS(k) - x[j*2+1]*x[j*2+1] * l[j]* l[k] *( 0.5 * m[j]+ sumMass(j+1, n))*sin(x[2*k]-x[2*j]);
+			}
+		}
+	}
+
+	//writeOut(Matrix);
+	//std::cout << "before" << std::endl;
+	bool Eigen = true ;
+	if(Eigen){
+		Eigen::MatrixXd Mat(n,n);
+		Eigen::VectorXd RHS_d(n);
+		for(int i = 0; i<n; ++i){
+			RHS_d(i) = RHS(i);
+			for( int j = 0; j <n ; ++j){
+				Mat(i,j) = Matrix(i,j);
+			}
+		}
+
+		int info;
+		int ipiv[n];
+		Eigen::VectorXd x_star = Mat.fullPivLu().solve(RHS_d);
+
+		for(int i = 0; i<n; ++i){
+			RHS(i) = RHS_d(i);
+		}
+		dd_alpha = RHS;
+	}
+	else{
+		boost::numeric::ublas::permutation_matrix <std::size_t> piv(Matrix.size1());
+		boost::numeric::ublas::lu_factorize(Matrix, piv);
+		dd_alpha = RHS;
+		boost::numeric::ublas::lu_substitute(Matrix, piv, dd_alpha);
+	}
+
+	//writeOut(Matrix);
+	//std::cout << "afterwards" << std::endl;	
+
+	for(int i = 0; i<2*n;++i){
+		if(i%2==0)
+			dxdt(i) = x(i+1);
+		else if(i%2 == 1)
+			dxdt(i) = dd_alpha((i-1)/2);
+	}
+	//std::cout << time << std::endl;
+}
+
+void flagella::writeOut(boost::numeric::ublas::matrix<double> M){
+	int round = 5;
+	std::cout << std::endl << std::setw(15);
+	for(int i = 0; i < M.size1(); ++i){
+		for(int j = 0; j < M.size2(); ++j)
+			std::cout << std::round(pow(10,round)*M(i,j))*pow(10,-round) << std::setw(15);
+	std::cout << std::endl;
+	}
+	std::cout << std::endl;
+}
 
 //dt alpha_1, ddt alpha_1,
 void flagella::GetRHS(const state_type &x, state_type &dxdt, const double time){
@@ -212,7 +316,66 @@ void flagella::GetRHS(const state_type &x, state_type &dxdt, const double time){
 			k=k+1;
 		}
 	}
-	dd_alpha_old = dd_alpha;
+	//dd_alpha_old = dd_alpha;
+}
+
+void flagella::getJacobiT(const state_type &x, matrix_type &J, const double time, state_type &dfdt){
+
+	getJacobi(x,J,time);
+	for(int j=0; j <2*n; ++j)
+		dfdt[j] = 0.;
+}
+
+void flagella::getJacobi(const state_type &x, matrix_type &J, const double time){
+
+	int k = 0;
+	for(int j = 0; j < 2*n; ++j){
+
+		if(j%2 == 0){//dfdx of Angles
+			J(j,j+1) = 1.;
+			}
+		else if(j%2 == 1){ // dfdx of Angular Velocities
+			//From angle
+			//i<k
+			for(int i = 0; i<k-1; ++i){
+				J(j,2*i) = - x[2*i+1]*x[2*i+1]*l[k]*l[i]*(0.5*m[k]+sumMass(k+1,n))*cos(x[2*k]- x[2*(i)]);
+			}
+			if(k>0){
+				J(j,2*(k-1)) = - x[2*k+1]*x[2*k+1]*l[k]*l[k-1]*(0.5*m[k]+sumMass(k+1,n))*cos(x[2*k]- x[2*(k-1)]) - k_spring[k];
+			}
+	
+			//i=k
+			J(j,2*k) = k_spring[k]+k_spring[k+1] - l[k]*(0.5*m[k]+ sumMass(k+1,n))*(x_dd*cos(x[2*k])+y_dd*sin(x[2*k]));
+			for(int i=0; i < k-1; ++i){
+				J(j,2*k) = J(k,k) + x[2*i+1]*x[2*i+1]*l[k]*l[i]*(0.5*m[k]+sumMass(k+1,n))*cos(x[2*k]- x[2*i]);
+			}
+			for(int i = k+1; i < n; ++i){
+				J(j,2*k) = J(k,k) - x[2*i+1]*x[2*i+1]*l[k]*l[i]*(0.5*m[k]+sumMass(i+1,n))*sin(x[2*k]- x[2*i]);
+			}
+	
+			//i>k
+			if(k<n-1){
+				J(j,2*(k+1))= - x[2*k+1]*x[2*(k+1)+1]*l[k]*l[k+1]*(0.5*m[k]+sumMass(k+2,n))*cos(x[2*k]- x[2*(k+1)]) +k_spring[k+1];
+			}
+			for( int i = k+2; i < n; ++i){
+				J(j,2*i) = - x[2*i+1]*x[2*i+1]*l[k]*l[i]*(0.5*m[k]+sumMass(i+1,n))*cos(x[2*k]- x[2*(i)]);
+			}
+		
+			//From angular vel.
+			//i<k
+			for(int i = 0; i<k; ++i){
+				J(j, 2*i+1) = 2*x[2*i+1]*l[i]*l[k]*(0.5*m[k]+ sumMass(k+1, n))*sin(x[2*k]-x[2*i]);
+			}
+			//i==k
+			J(j,2*k+1) = B[k];
+			//i<k
+			for( int i = k+1; i<n; ++i){
+				J(j,2*i+1) = 2*x[2*i+1]*l[i]*l[k]*(0.5*m[k]+ sumMass(i+1, n))*sin(x[2*k]-x[2*i]);
+			}
+
+			k=k+1;
+		}
+	}
 }
 
 
@@ -220,11 +383,19 @@ void flagella::GetRHS(const state_type &x, state_type &dxdt, const double time){
 void flagella::step(float_type delta_t){
 	int split = 100;
 	///*
+	boost::numeric::odeint::runge_kutta_cash_karp54<state_type> stepper; //seems to be the best
+	//boost::numeric::odeint::runge_kutta_dopri5<state_type> stepper;
+	//boost::numeric::odeint::bulirsch_stoer<state_type> stepper;
+
+
 	if(n==2){
 		boost::numeric::odeint::integrate(std::bind(&flagella::getRHS2D, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), alpha, float_type(0.0), delta_t, delta_t/split);
 	}
 	else{
-		boost::numeric::odeint::integrate(std::bind(&flagella::GetRHS, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), alpha, float_type(0.0), delta_t, delta_t/split);
+		boost::numeric::odeint::integrate_adaptive(stepper, std::bind(&flagella::getRHSMatrix, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), alpha, float_type(0.0), delta_t, delta_t/split);
+		/*boost::numeric::odeint::integrate_adaptive(boost::numeric::odeint::make_dense_output<boost::numeric::odeint::rosenbrock4<double>>(1.06e-6, 1.06e-6),
+		 std::make_pair(std::bind(&flagella::getRHSMatrix, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),std::bind(&flagella::getJacobiT, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)),
+		 alpha, float_type(0.0), delta_t, delta_t/split);*/
 	}
 	//*/
 	
@@ -259,6 +430,14 @@ void flagella::updx(){
 		x_vec[i][1] = x_vec[i-1][1] + l[1] * sin(alpha[1]);
 	}
 }
+
+std::vector<float> flagella::alpha2vec(){
+	std::vector<float> a_vec(2*n);
+	for(int i = 0; i<2*n;++i)
+		a_vec[i] = alpha[i];
+	return a_vec;
+}
+
 
 flagella::float_type flagella::sumMass(int first, int last){
 	float_type sum = 0;
