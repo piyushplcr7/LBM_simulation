@@ -122,6 +122,7 @@ public:
 	std::vector<float> alpha2vec();
 
 	void GetRHS(const state_type &x, state_type &dxdt, const double time);
+	void getRHS1D(const state_type &x, state_type &dxdt, const double time);
 	void getRHS2D(const state_type &x, state_type &dxdt, const double time);
 	void getRHSMatrix(const state_type &x, state_type &dxdt, const double time);
 	void getJacobiT(const state_type &x, matrix_type &J, const double time, state_type &dfdt);
@@ -143,9 +144,22 @@ public:
 	float_type sumMass(int first, int last);
 };
 
+void flagella::getRHS1D(const state_type &x, state_type &dxdt, const double time){
+	int k = 0;
+	float_type partk, RHS;
+
+	dxdt[0] = x[1];
+	//k=1
+	RHS = Q[0] - k_spring[0]*(x[0]) - B[0] * x[1]- l[0]*0.5*m[0]* (-x_dd*sin(x[0])+ y_dd*cos(x[0]));
+	partk = l[0]*l[0]*(0.25*m[0] + theta[0]);
+	dxdt[1] = RHS/partk;
+	dd_alpha[0] = dxdt[1];
+ 
+};	
+
 void flagella::getRHS2D(const state_type &x, state_type &dxdt, const double time){
 	int k = 0;
-	float_type part1, part2, part3, part4, partk, RHS;
+	float_type partk, RHS;
 
 	dxdt[0] = x[1];
 	//k=1
@@ -389,9 +403,11 @@ void flagella::step(float_type delta_t){
 	boost::numeric::odeint::runge_kutta_cash_karp54<state_type> stepper; //seems to be the best
 	//boost::numeric::odeint::runge_kutta_dopri5<state_type> stepper;
 	//boost::numeric::odeint::bulirsch_stoer<state_type> stepper;
-
-
-	if(n==2){
+	
+	if(n==1){
+		boost::numeric::odeint::integrate(std::bind(&flagella::getRHS1D, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), alpha, float_type(0.0), delta_t, delta_t/split);
+	}
+	else if(n==2){
 		boost::numeric::odeint::integrate(std::bind(&flagella::getRHS2D, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), alpha, float_type(0.0), delta_t, delta_t/split);
 	}
 	else{

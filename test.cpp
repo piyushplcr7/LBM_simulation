@@ -28,7 +28,8 @@ int main() {
 
 	flagella test(ele, l, m, k, b, 0,0,0,0);
 
-	std::vector<double> Q = {0,0};
+	//std::cout << "flagella constructed" << std::endl;
+	std::vector<double> Q = {0.};
 	for(int i = 0; i<ele;++i){
 		test.InitAngle(i,0.5);
 		//test.InitAngle(i, sin(float(i)/ele*2*M_PI)*0);
@@ -37,12 +38,14 @@ int main() {
 	}
 	test.InitAngle(ele-1,1.);
 
+	//std::cout << "flagella INitialised" << std::endl;
+
 	std::vector<float> alpha(2*ele);
 
 	for(int i = 0; i< time;++i){
 		//Q[0] = 1*sin(i*100/time);
 		alpha = test.stepRetvec(Q, 1);
-		std::cout << alpha[0] << std::endl;
+		//std::cout << alpha[0] << std::endl;
 	}
 
 
