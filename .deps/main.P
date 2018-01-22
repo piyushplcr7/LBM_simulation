@@ -143,29 +143,10 @@ main.o: main.cpp /usr/include/stdc-predef.h simulation.hpp H_root.hpp \
  /usr/include/x86_64-linux-gnu/c++/6/bits/c++io.h \
  /usr/include/c++/6/bits/fstream.tcc /usr/include/c++/6/cassert \
  /usr/include/assert.h /usr/include/c++/6/sstream \
- /usr/include/c++/6/bits/sstream.tcc elb.hpp visualization.hpp opengl.hpp \
- /usr/include/GL/glew.h /usr/include/GL/glu.h /usr/include/GL/gl.h \
- /usr/include/GL/freeglut.h /usr/include/GL/freeglut_std.h \
- /usr/include/c++/6/stdlib.h /usr/include/GL/freeglut_ext.h \
- /usr/include/X11/Xlib.h /usr/include/X11/X.h \
- /usr/include/X11/Xfuncproto.h /usr/include/X11/Xosdefs.h shader.hpp \
- /usr/include/c++/6/memory /usr/include/c++/6/bits/stl_raw_storage_iter.h \
- /usr/include/c++/6/ext/concurrence.h /usr/include/c++/6/functional \
- /usr/include/c++/6/bits/unique_ptr.h \
- /usr/include/c++/6/bits/shared_ptr.h \
- /usr/include/c++/6/bits/shared_ptr_base.h \
- /usr/include/c++/6/bits/allocated_ptr.h \
- /usr/include/c++/6/ext/aligned_buffer.h \
- /usr/include/c++/6/bits/shared_ptr_atomic.h \
- /usr/include/c++/6/bits/atomic_base.h \
- /usr/include/c++/6/backward/auto_ptr.h /usr/include/c++/6/list \
- /usr/include/c++/6/bits/stl_list.h /usr/include/c++/6/bits/list.tcc \
- third_party/EasyBMP/EasyBMP.h /usr/include/c++/6/cstring \
- /usr/include/string.h /usr/include/x86_64-linux-gnu/bits/string3.h \
- third_party/EasyBMP/EasyBMP_DataStructures.h \
- third_party/EasyBMP/EasyBMP_BMP.h \
- third_party/EasyBMP/EasyBMP_VariousBMPutilities.h \
- /usr/lib/gcc/x86_64-linux-gnu/6/include/omp.h
+ /usr/include/c++/6/bits/sstream.tcc elb.hpp \
+ /usr/lib/gcc/x86_64-linux-gnu/6/include/omp.h \
+ /usr/include/x86_64-linux-gnu/sys/stat.h \
+ /usr/include/x86_64-linux-gnu/bits/stat.h
 main.cpp /usr/include/stdc-predef.h simulation.hpp H_root.hpp :
  velocity_set.hpp global.hpp /usr/include/c++/6/iostream :
  /usr/include/x86_64-linux-gnu/c++/6/bits/c++config.h :
@@ -311,26 +292,7 @@ main.cpp /usr/include/stdc-predef.h simulation.hpp H_root.hpp :
  /usr/include/x86_64-linux-gnu/c++/6/bits/c++io.h :
  /usr/include/c++/6/bits/fstream.tcc /usr/include/c++/6/cassert :
  /usr/include/assert.h /usr/include/c++/6/sstream :
- /usr/include/c++/6/bits/sstream.tcc elb.hpp visualization.hpp opengl.hpp :
- /usr/include/GL/glew.h /usr/include/GL/glu.h /usr/include/GL/gl.h :
- /usr/include/GL/freeglut.h /usr/include/GL/freeglut_std.h :
- /usr/include/c++/6/stdlib.h /usr/include/GL/freeglut_ext.h :
- /usr/include/X11/Xlib.h /usr/include/X11/X.h :
- /usr/include/X11/Xfuncproto.h /usr/include/X11/Xosdefs.h shader.hpp :
- /usr/include/c++/6/memory /usr/include/c++/6/bits/stl_raw_storage_iter.h :
- /usr/include/c++/6/ext/concurrence.h /usr/include/c++/6/functional :
- /usr/include/c++/6/bits/unique_ptr.h :
- /usr/include/c++/6/bits/shared_ptr.h :
- /usr/include/c++/6/bits/shared_ptr_base.h :
- /usr/include/c++/6/bits/allocated_ptr.h :
- /usr/include/c++/6/ext/aligned_buffer.h :
- /usr/include/c++/6/bits/shared_ptr_atomic.h :
- /usr/include/c++/6/bits/atomic_base.h :
- /usr/include/c++/6/backward/auto_ptr.h /usr/include/c++/6/list :
- /usr/include/c++/6/bits/stl_list.h /usr/include/c++/6/bits/list.tcc :
- third_party/EasyBMP/EasyBMP.h /usr/include/c++/6/cstring :
- /usr/include/string.h /usr/include/x86_64-linux-gnu/bits/string3.h :
- third_party/EasyBMP/EasyBMP_DataStructures.h :
- third_party/EasyBMP/EasyBMP_BMP.h :
- third_party/EasyBMP/EasyBMP_VariousBMPutilities.h :
+ /usr/include/c++/6/bits/sstream.tcc elb.hpp :
  /usr/lib/gcc/x86_64-linux-gnu/6/include/omp.h :
+ /usr/include/x86_64-linux-gnu/sys/stat.h :
+ /usr/include/x86_64-linux-gnu/bits/stat.h :
