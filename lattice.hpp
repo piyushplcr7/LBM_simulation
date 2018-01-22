@@ -602,20 +602,20 @@ void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], floa
 				double uw = Cyl_vel[0], vw = Cyl_vel[1];
 				if ( !cylinder_fbn.empty() )
 				{
-					if ( get_node(x,y).index != cylinder_fbn.end()->index )
+					if ( get_node(x,y).index != cylinder_fbn.back().index )
 						cylinder_fbn.push_back(get_node(x,y));
-					cylinder_fbn.end()->add_missing_populations(i);
-					cylinder_fbn.end()->q_i.push_back(q);
-					cylinder_fbn.end()->uvw_i.push_back(std::make_pair(uw,vw));
-					cylinder_fbn.end()->s_di_populations.push_back(cylinder_fbn.end()->f(i));
+					cylinder_fbn.back().add_missing_populations(i);
+					cylinder_fbn.back().q_i.push_back(q);
+					cylinder_fbn.back().uvw_i.push_back(std::make_pair(uw,vw));
+					cylinder_fbn.back().s_di_populations.push_back(cylinder_fbn.back().f(i));
 				}
 				else
 				{
 					cylinder_fbn.push_back(get_node(x,y));
-					cylinder_fbn.end()->add_missing_populations(i);
-					cylinder_fbn.end()->q_i.push_back(q);
-					cylinder_fbn.end()->uvw_i.push_back(std::make_pair(uw,vw));
-					cylinder_fbn.end()->s_di_populations.push_back(cylinder_fbn.end()->f(i));
+					cylinder_fbn.back().add_missing_populations(i);
+					cylinder_fbn.back().q_i.push_back(q);
+					cylinder_fbn.back().uvw_i.push_back(std::make_pair(uw,vw));
+					cylinder_fbn.back().s_di_populations.push_back(cylinder_fbn.back().f(i));
 				}
 			}
 		}
@@ -623,7 +623,7 @@ void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], floa
 	not_solid.clear();
 }
 
-void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R,unsigned int partition)
+void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, unsigned int partition)
 {
 	coordinate<float_type> P0 = flg->getX0();
 	const unsigned int n_links = flg->n; //n_links is the number of links in flagella
@@ -658,20 +658,20 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R,u
 						double q=l_q_uw_vw[1],uw=l_q_uw_vw[2],vw=l_q_uw_vw[3];
 						if ( !flagella_nodes[link_no].empty() )
 						{
-							if ( get_node(i,j).index != flagella_nodes[link_no].end()->index )
+							if ( get_node(i,j).index != flagella_nodes[link_no].back().index )
 								flagella_nodes[link_no].push_back(get_node(i,j));
-							flagella_nodes[link_no].end()->add_missing_populations(dir);
-							flagella_nodes[link_no].end()->q_i.push_back(q);
-							flagella_nodes[link_no].end()->uvw_i.push_back(std::make_pair(uw,vw));
-							flagella_nodes[link_no].end()->s_di_populations.push_back(flagella_nodes[link_no].end()->f(dir));
+							flagella_nodes[link_no].back().add_missing_populations(dir);
+							flagella_nodes[link_no].back().q_i.push_back(q);
+							flagella_nodes[link_no].back().uvw_i.push_back(std::make_pair(uw,vw));
+							flagella_nodes[link_no].back().s_di_populations.push_back(flagella_nodes[link_no].back().f(dir));
 						}
 						else
 						{
 							flagella_nodes[link_no].push_back(get_node(i,j));
-							flagella_nodes[link_no].end()->add_missing_populations(dir);
-							flagella_nodes[link_no].end()->q_i.push_back(q);
-							flagella_nodes[link_no].end()->uvw_i.push_back(std::make_pair(uw,vw));
-							flagella_nodes[link_no].end()->s_di_populations.push_back(flagella_nodes[link_no].end()->f(dir));
+							flagella_nodes[link_no].back().add_missing_populations(dir);
+							flagella_nodes[link_no].back().q_i.push_back(q);
+							flagella_nodes[link_no].back().uvw_i.push_back(std::make_pair(uw,vw));
+							flagella_nodes[link_no].back().s_di_populations.push_back(flagella_nodes[link_no].back().f(dir));
 						}
 					}
 					else
@@ -682,20 +682,20 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R,u
 							double uw = Cyl_vel[0], vw = Cyl_vel[1];
 							if ( !cylinder_fbn_f.empty() )
 							{
-								if ( get_node(i,j).index != cylinder_fbn_f.end()->index )
+								if ( get_node(i,j).index != cylinder_fbn_f.back().index )
 									cylinder_fbn_f.push_back(get_node(i,j));
-								cylinder_fbn_f.end()->add_missing_populations(dir);
-								cylinder_fbn_f.end()->q_i.push_back(q);
-								cylinder_fbn_f.end()->uvw_i.push_back(std::make_pair(uw,vw));
-								cylinder_fbn_f.end()->s_di_populations.push_back(cylinder_fbn_f.end()->f(dir));
+								cylinder_fbn_f.back().add_missing_populations(dir);
+								cylinder_fbn_f.back().q_i.push_back(q);
+								cylinder_fbn_f.back().uvw_i.push_back(std::make_pair(uw,vw));
+								cylinder_fbn_f.back().s_di_populations.push_back(cylinder_fbn_f.back().f(dir));
 							}
 							else
 							{
 								cylinder_fbn_f.push_back(get_node(i,j));
-								cylinder_fbn_f.end()->add_missing_populations(dir);
-								cylinder_fbn_f.end()->q_i.push_back(q);
-								cylinder_fbn_f.end()->uvw_i.push_back(std::make_pair(uw,vw));
-								cylinder_fbn_f.end()->s_di_populations.push_back(cylinder_fbn_f.end()->f(dir));
+								cylinder_fbn_f.back().add_missing_populations(dir);
+								cylinder_fbn_f.back().q_i.push_back(q);
+								cylinder_fbn_f.back().uvw_i.push_back(std::make_pair(uw,vw));
+								cylinder_fbn_f.back().s_di_populations.push_back(cylinder_fbn_f.back().f(dir));
 							}
 						}
 					}
@@ -712,22 +712,22 @@ void lattice::merging_helper(/*unsigned int location,*/ const std::vector<node>:
 	unsigned int i = it->coord.i,j = it->coord.j;
 	//adding the missing populations to the nodes in lattice
 	get_node(i,j).missing_populations.insert	(
-			get_node(i,j).missing_populations.end(),
+			get_node(i,j).missing_populations.back(),
 			it->missing_populations.begin(),
 			it->missing_populations.end()		);
 	//adding the q values
 	get_node(i,j).q_i.insert	(
-			get_node(i,j).q_i.end(),
+			get_node(i,j).q_i.back(),
 			it->q_i.begin(),
-			it->q_i.end()					);
+			it->q_i.back()					);
 	//adding the wall velocities
 	get_node(i,j).uvw_i.insert	(
-			get_node(i,j).uvw_i.end(),
+			get_node(i,j).uvw_i.back(),
 			it->uvw_i.begin(),
 			it->uvw_i.end()					);
 	//adding the s_di_populations
 	get_node(i,j).s_di_populations.insert	(
-			get_node(i,j).s_di_populations.end(),
+			get_node(i,j).s_di_populations.back(),
 			it->s_di_populations.begin(),
 			it->s_di_populations.end()					);
 }
