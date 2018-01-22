@@ -6,7 +6,7 @@
 
 #ifndef LB_SIMULATION_HPP_INCLUDED
 #define LB_SIMULATION_HPP_INCLUDED
-#include "flagella.hpp"
+//#include "flagella.hpp"
 #include "H_root.hpp"
 #include "lattice.hpp"
 #include <sstream>
@@ -78,7 +78,7 @@ public: // ctor
 			partition = l.nx;
 		//force.open("Force.txt",std::ios::out);
 		//force << std::setw(10) << "Fx: " << std::setw(10) << "Fy: " << "\n";
-		l.add_wallCylinder(Cyl_center, Cyl_radius,using_flagella,partition);
+		l.add_wallCylinder(Cyl_center, Cyl_vel, Cyl_radius,using_flagella,partition);
 
 		//initialize flagella
 		if (using_flagella)
@@ -86,7 +86,7 @@ public: // ctor
 			coordinate<float> attach_point = {Cyl_center[0]+Cyl_radius,Cyl_center[1]};
 			unsigned int n_links = 2;
 			double length = 10,mass = 1,K=10,c=0.1;
-			flg = new flagella(n_links,length,mass,K,c,attach_point.i,attach_point.j);
+			flg = new flagella(n_links,length,mass,K,c,attach_point.i, attach_point.j);
 			//adding the flagella nodes and corresponding fluid boundary nodes to the lattice
 			l.add_flagella_nodes(flg,Cyl_radius,partition);
 		}
@@ -284,8 +284,8 @@ public: // ctor
 			unsigned int y_j = l.fluid_boundary_nodes[i].coord.j;
 			//std::cout << "Applying curved BC for "<<x_i << " " << y_j << std::endl;
 			std::vector<int> i_d(l.get_node(x_i,y_j).return_missing_populations()); //contains the direction in which solid is encountered
-			std::vector<double> q = l.get_node(x_i,y_j).q_i;												//contains the corresponding q values
-			std::vector<std:pair<double,double> > uvw = l.get_node(x_i,y_j).uvw_i;	//contains the corresponding wall velocities
+			std::vector<float_type> q = l.get_node(x_i,y_j).q_i;												//contains the corresponding q values
+			std::vector<std::pair<double,double> > uvw = l.get_node(x_i,y_j).uvw_i;	//contains the corresponding wall velocities
 			float_type utgt[2] = {0,0};
 			float_type rho_bb = 0;
 			float_type rho_s = 0;
@@ -305,18 +305,20 @@ public: // ctor
 				//get q_i for the direction given by i_d[j]
 				float_type u_fi[2];
 				//get u_f,i for the fluid node (in the opposite direction from the one where solid is encountered)
-				if ( q_i[inv_popl(i_d[j])] == 1. )
-					u_fi = {l.get_node(x_i+c_x,y_j+c_y).u(), l.get_node(x_i+c_x,y_j+c_y).v()};
+				if ( q_i[inv_popl(i_d[j])] == 1. ){
+					u_fi[0] = l.get_node(x_i+c_x,y_j+c_y).u(); u_fi[1]=l.get_node(x_i+c_x,y_j+c_y).v();
+				}
 				else
 					{
-						for (unsigned int tempit = 0; tempit<i_d.size() ; ++tempit)
+						unsigned int tempit;
+						for (tempit = 0; tempit<i_d.size() ; ++tempit)
 							{
 								if ( i_d[tempit] == inv_popl(i_d[j]) )
 									break;
 							}
 						float_type utemp,vtemp;
 						std::tie(utemp,vtemp) = uvw[tempit];
-						u_fi = {utemp,vtemp};
+						u_fi[0] = utemp; u_fi[1] = vtemp;
 					}
 					//float_type u_fi[2] = {l.get_node(x_i+c_x,y_j+c_y).u(), l.get_node(x_i+c_x,y_j+c_y).v()};
 				//std::cout << "q_i["<<i_d[j]<<"] = " << q_i[i_d[j]] << " Out of " << i_d.size() << " & u_fi = {" << u_fi[0] << "," << u_fi[1] << "}" ;
@@ -710,7 +712,7 @@ public: // ctor
 	std::vector<double> eval_M_flagella()
 	{
 		assert(using_flagella);
-		unsigned int n_elements = flg->n_elements;
+		unsigned int n_elements = flg->n;
 		std::vector<double> Moments(n_elements);
 
 		for (unsigned int link_no = 0 ; link_no < n_elements ; ++link_no)
@@ -777,11 +779,11 @@ public: // ctor
 
 		for (auto it = l.cylinder_fbn_f.begin() ; it!=l.cylinder_fbn_f.end() ; ++it)
 		{
-			unsigned int i = it->coord.i, j = it->coord.j;
+			unsigned int i,j; i = it->coord.i; j = it->coord.j;
 			l.get_node(i,j).missing_populations.clear();
 			l.get_node(i,j).q_i.clear();
 			l.get_node(i,j).uvw_i.clear();
-			l.get_node(i,j).s_di.clear();
+			l.get_node(i,j).s_di_populations.clear();
 			l.get_node(i,j).unset_flag_property("Fluid_Boundary_Node");
 		}
 		l.cylinder_fbn_f.clear();
@@ -790,11 +792,11 @@ public: // ctor
 		{
 			for (auto it = l.flagella_nodes[l_no].begin() ; it!=l.flagella_nodes[l_no].end() ; ++it)
 			{
-				unsigned int i = it->coord.i, j = it->coord.j;
+				unsigned int i, j; i = it->coord.i; j = it->coord.j;
 				l.get_node(i,j).missing_populations.clear();
 				l.get_node(i,j).q_i.clear();
 				l.get_node(i,j).uvw_i.clear();
-				l.get_node(i,j).s_di.clear();
+				l.get_node(i,j).s_di_populations.clear();
 				l.get_node(i,j).unset_flag_property("Fluid_Boundary_Node");
 			}
 			l.flagella_nodes[l_no].clear();
@@ -803,13 +805,13 @@ public: // ctor
 
 		for (auto it = l.cylinder_fbn.begin() ; it!=l.cylinder_fbn.end() ; ++it)
 		{
-			unsigned int i = it->coord.i, j = it->coord.j, reset_size = it->missing_populations.size();
+			unsigned int i, j, reset_size; i = it->coord.i; j = it->coord.j; reset_size = it->missing_populations.size();
 			l.get_node(i,j).missing_populations.resize(reset_size);
 			l.get_node(i,j).q_i.resize(reset_size);
 			l.get_node(i,j).uvw_i.resize(reset_size);
-			l.get_node(i,j).s_di.resize(reset_size);
+			l.get_node(i,j).s_di_populations.resize(reset_size);
 			for (unsigned int temp = 0 ; temp < reset_size ; ++temp)
-				l.get_node(i,j).s_di[temp] = l.get_node(i,j).f(missing_populations[temp]);
+				l.get_node(i,j).s_di_populations[temp] = l.get_node(i,j).f(missing_populations[temp]);
 			/*if ( !l.get_node(i,j).has_flag_property("Fluid_Boundary_Node") )
 				l.get_node(i,j).set_flag_property("Fluid_Boundary_Node");*/
 		}
@@ -818,7 +820,7 @@ public: // ctor
 
 		flg->step(Moments,1.);
 		//adding the flagella nodes and corresponding fluid boundary nodes to the lattice
-		l.add_flagella_nodes(flg,Cyl_radius,partition);
+		l.add_flagella_nodes(flg,Cyl_vel, Cyl_radius,partition);
 		l.merge_into_fbn(using_flagella);
 	}
 
@@ -846,7 +848,7 @@ public: // ctor
 			Adapt_Cyl();
 		if(using_flagella)
 			{
-				std::vector<double> Moments(flg->n_elements);
+				std::vector<double> Moments(flg->n);
 				Moments = eval_M_flagella();
 				Adapt_flagella(Moments);
 			}

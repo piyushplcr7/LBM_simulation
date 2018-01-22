@@ -330,7 +330,7 @@ public: // walls
 	 */
 	void add_wall(coordinate<int> min_coord, coordinate<int> max_coord);
 
-	void add_wallCylinder(float_type center[2], float_type radius);
+	void add_wallCylinder(float_type center[2], float_type Cyl_vel[2], float_type radius,bool using_flagella, unsigned int partition);
 
 	/** @brief Delete all existing walls */
 	void delete_walls();
@@ -342,7 +342,7 @@ public: // walls
 	void delete_fluid_boundary_nodes();
 
 	/** @brief Add fluid boundary nodes related to flagella*/
-	void add_flagella_nodes(flagella *);
+	void add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R,unsigned int partition);
 
 	/** @brief Merge different types of fluid boundary nodes into fluid_boundary_nodes vector and setting the flag properties*/
 	void merge_into_fbn(const bool&);
@@ -386,6 +386,8 @@ public: // members
 	std::vector<node> wall_nodes;             ///< array holding node objects belonging to a solid wall
 	std::vector<node> solid_nodes;
 	std::vector<node> fluid_boundary_nodes;
+	std::vector<node> cylinder_fbn;
+	std::vector<node> cylinder_fbn_f;
 	property_array properties;                ///< properties datastructure (can hold many different properties per node)
 	const bool periodic_x;                    ///< flag whether to use periodicity in x direction
 	const bool periodic_y;                    ///< flag whether to use periodicity in y direction
@@ -557,7 +559,7 @@ void lattice::add_wall(coordinate<int> min_coord, coordinate<int> max_coord)
 	}
 }
 
-void lattice::add_wallCylinder(float_type center[2], float_type radius,bool using_flagella, unsigned int partition) //function to mark the solid nodes (In and on the cylinder) & Fluid Boundary Nodes(some of whose populations come from solid)
+void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], float_type radius,bool using_flagella, unsigned int partition) //function to mark the solid nodes (In and on the cylinder) & Fluid Boundary Nodes(some of whose populations come from solid)
 { //ensure the partition here if flagella is used
 	std::vector<node> not_solid;
 	int x1 = floor(center[0] - radius)-1;  int y1 = floor(center[1] - radius)-1;
@@ -600,20 +602,20 @@ void lattice::add_wallCylinder(float_type center[2], float_type radius,bool usin
 				double uw = Cyl_vel[0], vw = Cyl_vel[1];
 				if ( !cylinder_fbn.empty() )
 				{
-					if ( get_node(x,y).index != cylinder_fbn.end().index )
+					if ( get_node(x,y).index != cylinder_fbn.end()->index )
 						cylinder_fbn.push_back(get_node(x,y));
-					cylinder_fbn.end().add_missing_populations(i);
-					cylinder_fbn.end().q_i.push_back(q);
-					cylinder_fbn.end().uvw_i.push_back(std::make_pair(uw,vw));
-					cylinder_fbn.end().s_di_populations.push_back(cylinder_fbn.end().f(i));
+					cylinder_fbn.end()->add_missing_populations(i);
+					cylinder_fbn.end()->q_i.push_back(q);
+					cylinder_fbn.end()->uvw_i.push_back(std::make_pair(uw,vw));
+					cylinder_fbn.end()->s_di_populations.push_back(cylinder_fbn.end()->f(i));
 				}
 				else
 				{
 					cylinder_fbn.push_back(get_node(x,y));
-					cylinder_fbn.end().add_missing_populations(i);
-					cylinder_fbn.end().q_i.push_back(q);
-					cylinder_fbn.end().uvw_i.push_back(std::make_pair(uw,vw));
-					cylinder_fbn.end().s_di_populations.push_back(cylinder_fbn.end().f(i));
+					cylinder_fbn.end()->add_missing_populations(i);
+					cylinder_fbn.end()->q_i.push_back(q);
+					cylinder_fbn.end()->uvw_i.push_back(std::make_pair(uw,vw));
+					cylinder_fbn.end()->s_di_populations.push_back(cylinder_fbn.end()->f(i));
 				}
 			}
 		}
@@ -621,10 +623,10 @@ void lattice::add_wallCylinder(float_type center[2], float_type radius,bool usin
 	not_solid.clear();
 }
 
-void lattice::add_flagella_nodes(flagella* flg, float& R,unsigned int partition)
+void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R,unsigned int partition)
 {
-	P0 = flg->attach_point;
-	const unsigned int n_links = flg->n_elements; //n_links is the number of links in flagella
+	coordinate<float_type> P0 = flg->getX0();
+	const unsigned int n_links = flg->n; //n_links is the number of links in flagella
 	flagella_nodes = std::vector<std::vector<node>> temp(n_links,std::vector<node>);
 	coordinate<int> min,max;
 	std::make_pair(min,max) = flg->get_bbox();   //bounding box of the flagella
@@ -653,23 +655,23 @@ void lattice::add_flagella_nodes(flagella* flg, float& R,unsigned int partition)
 					if ( intersect_with_flagella )
 					{
 						unsigned int link_no = (unsigned int) l_q_uw_vw[0];
-						double q=l_q_uw_vw[1],uw=l_q_uw_vw[2],vw=l_q_vw[3];
+						double q=l_q_uw_vw[1],uw=l_q_uw_vw[2],vw=l_q_uw_vw[3];
 						if ( !flagella_nodes[link_no].empty() )
 						{
-							if ( get_node(i,j).index != flagella_nodes[link_no].end().index )
+							if ( get_node(i,j).index != flagella_nodes[link_no].end()->index )
 								flagella_nodes[link_no].push_back(get_node(i,j));
-							flagella_nodes[link_no].end().add_missing_populations(dir);
-							flagella_nodes[link_no].end().q_i.push_back(q);
-							flagella_nodes[link_no].end().uvw_i.push_back(std::make_pair(uw,vw));
-							flagella_nodes[link_no].end().s_di_populations.push_back(flagella_nodes[link_no].end().f(dir));
+							flagella_nodes[link_no].end()->add_missing_populations(dir);
+							flagella_nodes[link_no].end()->q_i.push_back(q);
+							flagella_nodes[link_no].end()->uvw_i.push_back(std::make_pair(uw,vw));
+							flagella_nodes[link_no].end()->s_di_populations.push_back(flagella_nodes[link_no].end()->f(dir));
 						}
 						else
 						{
 							flagella_nodes[link_no].push_back(get_node(i,j));
-							flagella_nodes[link_no].end().add_missing_populations(dir);
-							flagella_nodes[link_no].end().q_i.push_back(q);
-							flagella_nodes[link_no].end().uvw_i.push_back(std::make_pair(uw,vw));
-							flagella_nodes[link_no].end().s_di_populations.push_back(flagella_nodes[link_no].end().f(dir));
+							flagella_nodes[link_no].end()->add_missing_populations(dir);
+							flagella_nodes[link_no].end()->q_i.push_back(q);
+							flagella_nodes[link_no].end()->uvw_i.push_back(std::make_pair(uw,vw));
+							flagella_nodes[link_no].end()->s_di_populations.push_back(flagella_nodes[link_no].end()->f(dir));
 						}
 					}
 					else
@@ -680,20 +682,20 @@ void lattice::add_flagella_nodes(flagella* flg, float& R,unsigned int partition)
 							double uw = Cyl_vel[0], vw = Cyl_vel[1];
 							if ( !cylinder_fbn_f.empty() )
 							{
-								if ( get_node(i,j).index != cylinder_fbn_f.end().index )
+								if ( get_node(i,j).index != cylinder_fbn_f.end()->index )
 									cylinder_fbn_f.push_back(get_node(i,j));
-								cylinder_fbn_f.end().add_missing_populations(dir);
-								cylinder_fbn_f.end().q_i.push_back(q);
-								cylinder_fbn_f.end().uvw_i.push_back(std::make_pair(uw,vw));
-								cylinder_fbn_f.end().s_di_populations.push_back(cylinder_fbn_f.end().f(dir));
+								cylinder_fbn_f.end()->add_missing_populations(dir);
+								cylinder_fbn_f.end()->q_i.push_back(q);
+								cylinder_fbn_f.end()->uvw_i.push_back(std::make_pair(uw,vw));
+								cylinder_fbn_f.end()->s_di_populations.push_back(cylinder_fbn_f.end()->f(dir));
 							}
 							else
 							{
 								cylinder_fbn_f.push_back(get_node(i,j));
-								cylinder_fbn_f.end().add_missing_populations(dir);
-								cylinder_fbn_f.end().q_i.push_back(q);
-								cylinder_fbn_f.end().uvw_i.push_back(std::make_pair(uw,vw));
-								cylinder_fbn_f.end().s_di_populations.push_back(cylinder_fbn_f.end().f(dir));
+								cylinder_fbn_f.end()->add_missing_populations(dir);
+								cylinder_fbn_f.end()->q_i.push_back(q);
+								cylinder_fbn_f.end()->uvw_i.push_back(std::make_pair(uw,vw));
+								cylinder_fbn_f.end()->s_di_populations.push_back(cylinder_fbn_f.end()->f(dir));
 							}
 						}
 					}
@@ -712,22 +714,22 @@ void lattice::merging_helper(/*unsigned int location,*/ const std::vector<node>:
 	get_node(i,j).missing_populations.insert	(
 			get_node(i,j).missing_populations.end(),
 			it->missing_populations.begin(),
-			it->missing_populations.end()					)
+			it->missing_populations.end()		);
 	//adding the q values
 	get_node(i,j).q_i.insert	(
 			get_node(i,j).q_i.end(),
 			it->q_i.begin(),
-			it->q_i.end()					)
+			it->q_i.end()					);
 	//adding the wall velocities
 	get_node(i,j).uvw_i.insert	(
 			get_node(i,j).uvw_i.end(),
 			it->uvw_i.begin(),
-			it->uvw_i.end()					)
+			it->uvw_i.end()					);
 	//adding the s_di_populations
 	get_node(i,j).s_di_populations.insert	(
 			get_node(i,j).s_di_populations.end(),
 			it->s_di_populations.begin(),
-			it->s_di_populations.end()					)
+			it->s_di_populations.end()					);
 }
 
 void lattice::merge_into_fbn(const bool& using_flagella)
