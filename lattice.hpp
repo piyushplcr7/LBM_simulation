@@ -9,7 +9,9 @@
 
 #include "velocity_set.hpp"
 //#include "distance.hpp"
+#include "flagella.hpp"
 #include "property_array.hpp"
+#include "simulation.hpp"
 #include <vector>
 #include <fstream>
 #include<cassert>
@@ -197,6 +199,8 @@ public: // members
 	coordinate<int> coord; ///< Coordinate of node's position
 	std::vector<int> missing_populations; ///<Contains the indices of missing populations (for Fluid Boundary Nodes, empty otherwise)
 	std::vector<float_type> q_i; ///<Contains the indices of missing populations (for Fluid Boundary Nodes, empty otherwise)
+	std::vector<std::pair<double,double> > uvw_i; ///<Contains the wall velocities
+	std::vector<double> s_di_populations;  ///contains the populations in the direction q_i from previous timestep
 };
 
 /**
@@ -333,8 +337,19 @@ public: // walls
 
 	/** @brief Delete all existing solids */
 	void delete_solids();
+
 	/** @brief Delete all Fluid boundary nodes*/
 	void delete_fluid_boundary_nodes();
+
+	/** @brief Add fluid boundary nodes related to flagella*/
+	void add_flagella_nodes(flagella *);
+
+	/** @brief Merge different types of fluid boundary nodes into fluid_boundary_nodes vector and setting the flag properties*/
+	void merge_into_fbn(const bool&);
+
+	/** @brief Merging helper function */
+	void merging_helper(/*const unsigned int&,*/ const std::vector<node>::iterator&);
+
 
 public: // file dump
 
@@ -375,6 +390,10 @@ public: // members
 	const bool periodic_x;                    ///< flag whether to use periodicity in x direction
 	const bool periodic_y;                    ///< flag whether to use periodicity in y direction
 	std::vector<std::vector<int>> miss_pop;   ///< Vector of missing populations for each node
+	std::vector<std::vector<node> >
+													flagella_nodes;  	///< 2d vector for storing flagella fluid boundary nodes.
+																						///< each row corresponds to a link of flagella
+	unsigned int unchanging_size;
 };
 
 
@@ -538,8 +557,8 @@ void lattice::add_wall(coordinate<int> min_coord, coordinate<int> max_coord)
 	}
 }
 
-void lattice::add_wallCylinder(float_type center[2], float_type radius) //function to mark the solid nodes (In and on the cylinder) & Fluid Boundary Nodes(some of whose populations come from solid)
-{
+void lattice::add_wallCylinder(float_type center[2], float_type radius,bool using_flagella, unsigned int partition) //function to mark the solid nodes (In and on the cylinder) & Fluid Boundary Nodes(some of whose populations come from solid)
+{ //ensure the partition here if flagella is used
 	std::vector<node> not_solid;
 	int x1 = floor(center[0] - radius)-1;  int y1 = floor(center[1] - radius)-1;
 	int x2 = ceil(center[0] + radius)+1;  int y2 = ceil(center[1] + radius)+1;
@@ -563,25 +582,197 @@ void lattice::add_wallCylinder(float_type center[2], float_type radius) //functi
 				not_solid.push_back(get_node(i,j));
 		}
 	}
-	//differentiate between the rest nodes and Fluid boundary nodes, updating the missing populations vector for the fluid boundary nodes
+
+	//differentiate between the non solid nodes and Fluid boundary nodes
+	//if flagella is used, ensure the partition
 	for ( std::vector<node>::iterator it = not_solid.begin() ; it!=not_solid.end() ; ++it ) //iterating over the nodes inside bounding box which are not solid
 	{
 		unsigned int x = it->coord.i;	unsigned int y = it->coord.j;
-		//checking the populations which intersect with the solid nodes
+		// for partitioning
+		if (using_flagella && x>= partition)
+			continue;
+		//checking the populations of the point x,y which intersect with the solid nodes
 		for (unsigned int i = 0 ; i<velocity_set().size ; ++i)
 		{
 			if ( get_node(x + velocity_set().c[0][i] ,y + velocity_set().c[1][i] ).has_flag_property("solid") ) // if the adjacent node (according to Ci is a solid node)
 			{
-				if ( !(get_node(x,y).has_flag_property("Fluid_Boundary_Node") ) )
+				double q = get_qi(*it,i);
+				double uw = Cyl_vel[0], vw = Cyl_vel[1];
+				if ( !cylinder_fbn.empty() )
 				{
-					get_node(x,y).set_flag_property("Fluid_Boundary_Node");
-					fluid_boundary_nodes.push_back(*it);
+					if ( get_node(x,y).index != cylinder_fbn.end().index )
+						cylinder_fbn.push_back(get_node(x,y));
+					cylinder_fbn.end().add_missing_populations(i);
+					cylinder_fbn.end().q_i.push_back(q);
+					cylinder_fbn.end().uvw_i.push_back(std::make_pair(uw,vw));
+					cylinder_fbn.end().s_di_populations.push_back(cylinder_fbn.end().f(i));
 				}
-				get_node(x,y).add_missing_populations(i);
+				else
+				{
+					cylinder_fbn.push_back(get_node(x,y));
+					cylinder_fbn.end().add_missing_populations(i);
+					cylinder_fbn.end().q_i.push_back(q);
+					cylinder_fbn.end().uvw_i.push_back(std::make_pair(uw,vw));
+					cylinder_fbn.end().s_di_populations.push_back(cylinder_fbn.end().f(i));
+				}
 			}
 		}
 	}
 	not_solid.clear();
+}
+
+void lattice::add_flagella_nodes(flagella* flg, float& R,unsigned int partition)
+{
+	P0 = flg->attach_point;
+	const unsigned int n_links = flg->n_elements; //n_links is the number of links in flagella
+	flagella_nodes = std::vector<std::vector<node>> temp(n_links,std::vector<node>);
+	coordinate<int> min,max;
+	std::make_pair(min,max) = flg->get_bbox();   //bounding box of the flagella
+	assert(partition < min.i);
+	min.i = partition;  													//assumed that the flagella is on right of the cylinder
+	unsigned int y =
+			(unsigned int) std::sqrt(std::pow(R,2)
+															-std::pow(x,2));	//y is the half distance
+	if (y < max.j-min.j)
+		y = max.j - min.j;
+	y = y+5;
+	min.j = (unsigned int) P0.j - y;
+	max.j = (unsigned int) P0.j + y;
+
+	for (unsigned int j = min.j; j<=max.j; ++j)
+	{
+		for (unsigned int i=min.i; i<=max.i; ++i)
+		{
+			if ( !get_node(i,j).has_flag_property("solid") )
+			{
+				for (unsigned int dir = 0 ; dir<velocity_set().size ; ++dir)
+				{
+					//check intersection with flagella first
+					std::vector<double> l_q_uw_vw; bool intersect_with_flagella;
+					std::tie(l_q_uw_vw,intersect_with_flagella) = flg->check_intersection(i,j,dir);
+					if ( intersect_with_flagella )
+					{
+						unsigned int link_no = (unsigned int) l_q_uw_vw[0];
+						double q=l_q_uw_vw[1],uw=l_q_uw_vw[2],vw=l_q_vw[3];
+						if ( !flagella_nodes[link_no].empty() )
+						{
+							if ( get_node(i,j).index != flagella_nodes[link_no].end().index )
+								flagella_nodes[link_no].push_back(get_node(i,j));
+							flagella_nodes[link_no].end().add_missing_populations(dir);
+							flagella_nodes[link_no].end().q_i.push_back(q);
+							flagella_nodes[link_no].end().uvw_i.push_back(std::make_pair(uw,vw));
+							flagella_nodes[link_no].end().s_di_populations.push_back(flagella_nodes[link_no].end().f(dir));
+						}
+						else
+						{
+							flagella_nodes[link_no].push_back(get_node(i,j));
+							flagella_nodes[link_no].end().add_missing_populations(dir);
+							flagella_nodes[link_no].end().q_i.push_back(q);
+							flagella_nodes[link_no].end().uvw_i.push_back(std::make_pair(uw,vw));
+							flagella_nodes[link_no].end().s_di_populations.push_back(flagella_nodes[link_no].end().f(dir));
+						}
+					}
+					else
+					{
+						if ( get_node(i + velocity_set().c[0][dir] ,j + velocity_set().c[1][dir] ).has_flag_property("solid") ) // if the adjacent node (according to Ci is a solid/cylinder node)
+						{
+							double q = get_qi(get_node(i,j),dir);
+							double uw = Cyl_vel[0], vw = Cyl_vel[1];
+							if ( !cylinder_fbn_f.empty() )
+							{
+								if ( get_node(i,j).index != cylinder_fbn_f.end().index )
+									cylinder_fbn_f.push_back(get_node(i,j));
+								cylinder_fbn_f.end().add_missing_populations(dir);
+								cylinder_fbn_f.end().q_i.push_back(q);
+								cylinder_fbn_f.end().uvw_i.push_back(std::make_pair(uw,vw));
+								cylinder_fbn_f.end().s_di_populations.push_back(cylinder_fbn_f.end().f(dir));
+							}
+							else
+							{
+								cylinder_fbn_f.push_back(get_node(i,j));
+								cylinder_fbn_f.end().add_missing_populations(dir);
+								cylinder_fbn_f.end().q_i.push_back(q);
+								cylinder_fbn_f.end().uvw_i.push_back(std::make_pair(uw,vw));
+								cylinder_fbn_f.end().s_di_populations.push_back(cylinder_fbn_f.end().f(dir));
+							}
+						}
+					}
+
+				}
+			}
+		}
+	}
+
+}
+
+void lattice::merging_helper(/*unsigned int location,*/ const std::vector<node>::iterator& it)
+{
+	unsigned int i = it->coord.i,j = it->coord.j;
+	//adding the missing populations to the nodes in lattice
+	get_node(i,j).missing_populations.insert	(
+			get_node(i,j).missing_populations.end(),
+			it->missing_populations.begin(),
+			it->missing_populations.end()					)
+	//adding the q values
+	get_node(i,j).q_i.insert	(
+			get_node(i,j).q_i.end(),
+			it->q_i.begin(),
+			it->q_i.end()					)
+	//adding the wall velocities
+	get_node(i,j).uvw_i.insert	(
+			get_node(i,j).uvw_i.end(),
+			it->uvw_i.begin(),
+			it->uvw_i.end()					)
+	//adding the s_di_populations
+	get_node(i,j).s_di_populations.insert	(
+			get_node(i,j).s_di_populations.end(),
+			it->s_di_populations.begin(),
+			it->s_di_populations.end()					)
+}
+
+void lattice::merge_into_fbn(const bool& using_flagella)
+{
+	if (!using_flagella)
+	{
+		fluid_boundary_nodes = cylinder_fbn;
+	}
+	else //if using flagella, then the different nodes and their contents are merged into lattice nodes
+	{	//the part for cylinder_fbn is supposed to be used only for the beginning
+		for (auto it = cylinder_fbn.begin() ; it != cylinder_fbn.end() ; ++it )
+		{
+			if ( !it->has_flag_property("Fluid_Boundary_Node") )
+			{
+				it->set_flag_property("Fluid_Boundary_Node");
+				fluid_boundary_nodes.push_back(*it);
+				merging_helper(it);
+			}
+		}
+		//for the flagella links
+		unsigned int n_links = flagella_nodes.size();
+		for (unsigned int l = 0 ; l<n_links ; ++l)
+		{
+			for (auto it = flagella_nodes[l].begin() ; it != flagella_nodes[l].end() ; ++it)
+			{
+				if ( !it->has_flag_property("Fluid_Boundary_Node") ) //already a solid node
+					{
+						it->set_flag_property("Fluid_Boundary_Node");
+						fluid_boundary_nodes.push_back(*it);
+					}
+				merging_helper(it);
+			}
+		}
+		//for the cylinder_fbn_f
+		for (auto it = cylinder_fbn_f.begin() ; it != cylinder_fbn_f.end() ; ++it)
+		{
+			if ( !it->has_flag_property("Fluid_Boundary_Node") ) // not already a solid node
+				{
+					it->set_flag_property("Fluid_Boundary_Node");
+					fluid_boundary_nodes.push_back(*it);
+				}
+			merging_helper(it);
+		}
+	}
+
 }
 
 void lattice::delete_fluid_boundary_nodes()
