@@ -86,9 +86,9 @@ public: // ctor
 			coordinate<float> attach_point = {Cyl_center[0]+Cyl_radius,Cyl_center[1]};
 			unsigned int n_links = 2;
 			double length = 10,mass = 1,K=10,c=0.1;
-			flg = new flagella(n_links,length,mass,K,c,attach_point.i, attach_point.j);
+			flg = new flagella(n_links, length, mass, K, c, attach_point.i, attach_point.j, 0, 0);
 			//adding the flagella nodes and corresponding fluid boundary nodes to the lattice
-			l.add_flagella_nodes(flg,Cyl_radius,partition);
+			l.add_flagella_nodes(flg, Cyl_vel, Cyl_radius, partition);
 		}
 
 		//Merge different fluid boundary nodes with different directions into one
