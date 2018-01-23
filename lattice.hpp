@@ -627,14 +627,14 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, 
 {
 	coordinate<float_type> P0 = flg->getX0();
 	const unsigned int n_links = flg->n; //n_links is the number of links in flagella
-	flagella_nodes = std::vector<std::vector<node>> temp(n_links,std::vector<node>);
+	flagella_nodes.resize(n_links);
 	coordinate<int> min,max;
 	std::make_pair(min,max) = flg->get_bbox();   //bounding box of the flagella
 	assert(partition < min.i);
 	min.i = partition;  													//assumed that the flagella is on right of the cylinder
 	unsigned int y =
 			(unsigned int) std::sqrt(std::pow(R,2)
-															-std::pow(x,2));	//y is the half distance
+															-std::pow(partition,2));	//y is the half distance
 	if (y < max.j-min.j)
 		y = max.j - min.j;
 	y = y+5;
