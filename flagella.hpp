@@ -134,6 +134,8 @@ public:
 	coordinate<float_type> getX0(){coordinate<float_type> x0; x0.i = x; x0.j=y; return x0; }
 	
 
+	float_type eval_M(int link_no, double Fx, double Fy, unsigned int xb, unsigned int yb);
+	std::pair<coordinate<int>, coordinate<int>> get_bbox();
 
 	//Coordinates
 	void updx();
@@ -440,6 +442,56 @@ void flagella::step(float_type delta_t){
 		}
 	}
 	txt_a << std::endl;
+}
+
+float_type flagella::eval_M(int link_no, double Fx, double Fy, unsigned int xb, unsigned int yb){
+	float_type dx, dy, x1, y1, moment; //x2, y2, t,
+	assert(link_no <= n);
+	if (link_no == 0){
+		x1 = x_0; y1 = y_0;
+		//x2 = x_vec[0][0]; y2 = x_vec[0][1];
+	}
+	else{
+		x1 = x_vec[link_no-1][0]; y1 = x_vec[link_no-1][1];
+		//x2= x_vec[link_no][0]; y2= x_vec[link_no][1];
+	}
+	/*dx = x2 -x1;
+	dy = y2-y1;
+	t = ( (dx)*(xb-x1)+(dy)*(yb-y1) )/( dx*dx + dy*dy); //find t of line equation for shortest distance
+	moment = (xb-x1)*t*Fy -(yb-y1)*t*Fx; //calculate moment from forces on the link*/
+	moment = (xb-x1)*Fy - (yb-y1)*Fx;
+	return moment;
+}
+
+std::pair<coordinate<int>, coordinate<int>> flagella::get_bbox(){
+	coordinate<int> min,max;
+	float_type xmin, xmax, ymin, ymax;
+	int safety = 2;
+
+	x_vec[0][0] = x_0 + l[0] * cos(alpha[0]);
+	x_vec[0][1] = y_0 + l[0] * sin(alpha[0]);
+	xmin = x_vec[0][0]; xmax = x_vec[0][0];
+	ymin = x_vec[0][1]; ymax = x_vec[0][1];
+
+	for( int i = 1; i < n; ++i){
+		x_vec[i][0] = x_vec[i-1][0] + l[1] * cos(alpha[1]);
+		x_vec[i][1] = x_vec[i-1][1] + l[1] * sin(alpha[1]);
+		if(xmin > x_vec[i][0])
+			xmin = x_vec[i][0];
+		else if(xmax < x_vec[i][0])
+			xmax = x_vec[i][0];
+		if(ymin > x_vec[i][1])
+			ymin = x_vec[i][1];
+		else if(ymax < x_vec[i][1])
+			ymax = x_vec[i][1];
+	}
+
+	min.i = (int) xmin - safety;
+	min.j = (int) ymin - safety;
+	max.i = (int) xmax + safety;
+	max.j = (int) ymax + safety;
+
+	return std::make_pair(min, max);
 }
 
 //Update Coordinates

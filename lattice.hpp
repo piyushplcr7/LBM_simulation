@@ -623,18 +623,18 @@ void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], floa
 	not_solid.clear();
 }
 
-void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R,unsigned int partition)
+void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, unsigned int partition)
 {
 	coordinate<float_type> P0 = flg->getX0();
 	const unsigned int n_links = flg->n; //n_links is the number of links in flagella
-	flagella_nodes = std::vector<std::vector<node>> temp(n_links,std::vector<node>);
+	flagella_nodes.resize(n_links);
 	coordinate<int> min,max;
 	std::make_pair(min,max) = flg->get_bbox();   //bounding box of the flagella
 	assert(partition < min.i);
 	min.i = partition;  													//assumed that the flagella is on right of the cylinder
 	unsigned int y =
 			(unsigned int) std::sqrt(std::pow(R,2)
-															-std::pow(x,2));	//y is the half distance
+															-std::pow(partition,2));	//y is the half distance
 	if (y < max.j-min.j)
 		y = max.j - min.j;
 	y = y+5;
@@ -712,22 +712,22 @@ void lattice::merging_helper(/*unsigned int location,*/ const std::vector<node>:
 	unsigned int i = it->coord.i,j = it->coord.j;
 	//adding the missing populations to the nodes in lattice
 	get_node(i,j).missing_populations.insert	(
-			get_node(i,j).missing_populations.end(),
+			get_node(i,j).missing_populations.back(),
 			it->missing_populations.begin(),
 			it->missing_populations.end()		);
 	//adding the q values
 	get_node(i,j).q_i.insert	(
-			get_node(i,j).q_i.end(),
+			get_node(i,j).q_i.back(),
 			it->q_i.begin(),
-			it->q_i.end()					);
+			it->q_i.back()					);
 	//adding the wall velocities
 	get_node(i,j).uvw_i.insert	(
-			get_node(i,j).uvw_i.end(),
+			get_node(i,j).uvw_i.back(),
 			it->uvw_i.begin(),
 			it->uvw_i.end()					);
 	//adding the s_di_populations
 	get_node(i,j).s_di_populations.insert	(
-			get_node(i,j).s_di_populations.end(),
+			get_node(i,j).s_di_populations.back(),
 			it->s_di_populations.begin(),
 			it->s_di_populations.end()					);
 }

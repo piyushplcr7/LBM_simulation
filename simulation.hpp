@@ -709,11 +709,13 @@ public: // ctor
 		return std::make_pair(Fx,Fy);
 	}
 
-	std::vector<double> eval_M_flagella()
+	std::vector<float_type> eval_M_flagella()
 	{
 		assert(using_flagella);
 		unsigned int n_elements = flg->n;
-		std::vector<double> Moments(n_elements);
+		flg->updx(); //Update all x values inside the flagella class
+		std::vector<float_type> Moments(n_elements);
+
 
 		for (unsigned int link_no = 0 ; link_no < n_elements ; ++link_no)
 		{
@@ -773,7 +775,7 @@ public: // ctor
 	}
 
 	/** @brief Apply all Boundary Conditions */
-	void Adapt_flagella(const std::vector<double>& Moments)
+	void Adapt_flagella(const std::vector<float_typeget>& Moments)
 	{
 		unsigned int n_links = Moments.size();
 
@@ -850,7 +852,7 @@ public: // ctor
 			Adapt_Cyl();
 		if(using_flagella)
 			{
-				std::vector<double> Moments(flg->n);
+				std::vector<float_type> Moments(flg->n);
 				Moments = eval_M_flagella();
 				Adapt_flagella(Moments);
 			}
