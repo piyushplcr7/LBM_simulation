@@ -803,6 +803,8 @@ public: // ctor
 		}
 		l.flagella_nodes.clear();
 
+		//probably the next loop is not required because cylinder_fbn is exclusive ie does not intersect with anyone else
+		//only updation of the s_di_populations is necessary
 		for (auto it = l.cylinder_fbn.begin() ; it!=l.cylinder_fbn.end() ; ++it)
 		{
 			unsigned int i, j, reset_size; i = it->coord.i; j = it->coord.j; reset_size = it->missing_populations.size();
