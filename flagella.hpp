@@ -153,7 +153,7 @@ public:
 																													const unsigned int&);
 };
 
-std::pair<double,double> line(const double& x0, const double& y0
+std::pair<double,double> line(const double& x0, const double& y0,
 															const double& x1, const double& y1)  //returns m and c for line y=mx+c passing through these two points
 	{
 		double m = (y1-y0)/(x1-x0);
@@ -193,25 +193,28 @@ std::pair<std::pair<double,double>,bool> intersection(const double& i0, const do
 		}
 	}
 
-std::pair<std::vector<double>,bool> check_intersection (const unsigned int& i0,
+std::pair<std::vector<double>,bool> flagella::check_intersection (const unsigned int& i0,
 																												const unsigned int& j0,
 																												const unsigned int& dir)
 	{
-		std::vector<double> q(n,1); std::vector<std::pair<double,double>> intersection_pts(n,std::make_pair(0.,0.) );
+
+		double x0, y0, x1,y1;/*
+		std::vector<double> q(n,1);*/ std::vector<std::pair<double,double>> intersection_pts(n,std::make_pair(0.,0.) );
 		bool is_intersecting = false;
-		unsigned int i1,j1; i1 = i0 + velocity_set().c[0][k]; j1 = j0 + velocity_set().c[1][k];
+		unsigned int i1,j1; i1 = i0 + velocity_set().c[0][dir]; j1 = j0 + velocity_set().c[1][dir];
 		int L = -1; double uw=0,vw=0,q = 1.1;
 		//checking intersection with all the links
 		for (unsigned int l = 0 ; l<n ; ++l)
 		{
 			if (l == 0)
 			{
-				double x0 = x_0, y0 = y_0, x1 = x_vec[0][0] , y1 = x_vec[0][1];
+				x0 = x_0; y0 = y_0; x1 = x_vec[0][0]; y1 = x_vec[0][1];
 			}
 			else
 			{
-				double x0 = x_vec[l-1][0], y0 = x_vec[l-1][1], x1 = x_vec[l][0] , y1 = x_vec[l][1];
+				x0 = x_vec[l-1][0]; y0 = x_vec[l-1][1]; x1 = x_vec[l][0]; y1 = x_vec[l][1];
 			}
+
 			std::pair<double,double> intersection_pt; bool is_intersecting_l;
 			std::tie(intersection_pt,is_intersecting_l) = intersection( i0,j0,
 																																i1,j1,
@@ -228,9 +231,9 @@ std::pair<std::vector<double>,bool> check_intersection (const unsigned int& i0,
 					L = l;
 					double r = std::sqrt( std::pow((x0-intersection_pt.first),2) +
 																std::pow((y0-intersection_pt.second),2) );
-					double v = r * alpha_dot[l];
-					uw = -v*sin(alpha[l]);
-					vw = v*cos(alpha[l]);
+					double v = r * alpha[2*l+1];
+					uw = -v*sin(alpha[2*l]);
+					vw = v*cos(alpha[2*l]);
 				}
 				//break;
 			}
@@ -241,7 +244,6 @@ std::pair<std::vector<double>,bool> check_intersection (const unsigned int& i0,
 	}
 
 void flagella::getRHS1D(const state_type &x, state_type &dxdt, const double time){
-	int k = 0;
 	float_type partk, RHS;
 
 	dxdt[0] = x[1];
@@ -254,7 +256,6 @@ void flagella::getRHS1D(const state_type &x, state_type &dxdt, const double time
 };
 
 void flagella::getRHS2D(const state_type &x, state_type &dxdt, const double time){
-	int k = 0;
 	float_type partk, RHS;
 
 	dxdt[0] = x[1];

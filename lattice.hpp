@@ -11,13 +11,14 @@
 //#include "distance.hpp"
 #include "flagella.hpp"
 #include "property_array.hpp"
-#include "simulation.hpp"
+//#include "simulation.hpp"
 #include <vector>
 #include <fstream>
 #include<cassert>
 
 namespace lb {
 
+class simulation;
 class lattice; // forward declaration
 
 /**
@@ -330,7 +331,7 @@ public: // walls
 	 */
 	void add_wall(coordinate<int> min_coord, coordinate<int> max_coord);
 
-	void add_wallCylinder(float_type center[2], float_type Cyl_vel[2], float_type radius,bool using_flagella, unsigned int partition);
+	void add_wallCylinder(float_type center[2], float_type Cyl_vel[2], float_type radius,bool using_flagella, unsigned int partition, const simulation& sim);
 
 	/** @brief Delete all existing walls */
 	void delete_walls();
@@ -342,7 +343,7 @@ public: // walls
 	void delete_fluid_boundary_nodes();
 
 	/** @brief Add fluid boundary nodes related to flagella*/
-	void add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R,unsigned int partition);
+	void add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, unsigned int partition, /*const lb::*/const simulation& sim);
 
 	/** @brief Merge different types of fluid boundary nodes into fluid_boundary_nodes vector and setting the flag properties*/
 	void merge_into_fbn(const bool&);
@@ -559,7 +560,7 @@ void lattice::add_wall(coordinate<int> min_coord, coordinate<int> max_coord)
 	}
 }
 
-void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], float_type radius,bool using_flagella, unsigned int partition, const simulation& sim) //function to mark the solid nodes (In and on the cylinder) & Fluid Boundary Nodes(some of whose populations come from solid)
+void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], float_type radius,bool using_flagella, unsigned int partition, const simulation& sim)//function to mark the solid nodes (In and on the cylinder) & Fluid Boundary Nodes(some of whose populations come from solid)
 { //ensure the partition here if flagella is used
 	std::vector<node> not_solid;
 	int x1 = floor(center[0] - radius)-1;  int y1 = floor(center[1] - radius)-1;
@@ -623,7 +624,7 @@ void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], floa
 	not_solid.clear();
 }
 
-void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, unsigned int partition, const simulation& sim)
+void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, unsigned int partition, const simulation & sim)
 {
 	coordinate<float_type> P0 = flg->getX0();
 	unsigned int x = fabs(P0.i - partition);
@@ -720,7 +721,7 @@ void lattice::merging_helper(/*unsigned int location,*/ const std::vector<node>:
 	get_node(i,j).q_i.insert	(
 			get_node(i,j).q_i.end(),
 			it->q_i.begin(),
-			it->q_i.back()					);
+			it->q_i.end()					);
 	//adding the wall velocities
 	get_node(i,j).uvw_i.insert	(
 			get_node(i,j).uvw_i.end(),

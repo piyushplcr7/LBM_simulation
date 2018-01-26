@@ -1,3 +1,4 @@
+//#include "lattice.hpp"
 #include "simulation.hpp"
 #ifdef USE_OPENGL_VISUALIZATION
 #include "visualization.hpp"

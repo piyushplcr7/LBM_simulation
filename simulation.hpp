@@ -190,13 +190,8 @@ public: // ctor
 		}
 	}
 
-	/**  @brief calculate smaller root of quadratic function */
-	inline float_type solve_quadratic(float_type a, float_type b, float_type c){
-		return -b/2/a - sqrt(b*b-4*a*c)/2/a;
-	}
-
-	/**  @brief calculate fraction of fluid from node n to the solid boundary along the direction i */
-	static float_type get_qi(const node& n,const int& i) const{
+		/**  @brief calculate fraction of fluid from node n to the solid boundary along the direction i */
+	/*static*/ float_type get_qi(const node& n,const int& i) /*const*/{
 		double x1 = (double)n.coord.i; double y1 = (double)n.coord.j;
 		double x2 =  x1 + (double)velocity_set().c[0][i]; double y2 =  y1 + (double)velocity_set().c[1][i];
 		assert(l.get_node((int)x2,(int)y2).has_flag_property("solid"));
@@ -221,6 +216,14 @@ public: // ctor
 		return q_i;
 
 	}
+
+
+	/**  @brief calculate smaller root of quadratic function */
+	inline float_type solve_quadratic(float_type a, float_type b, float_type c){
+		return -b/2/a - sqrt(b*b-4*a*c)/2/a;
+	}
+
+
 	/**  @brief Calculate Eq Presure tensor */
 	void calc_Peq(int i, int j, float_type (&Peq)[2][2]){
 		double rho = l.get_node(i,j).rho(); double u = l.get_node(i,j).u();	double v = l.get_node(i,j).v();	double cs = velocity_set().cs;
@@ -650,7 +653,7 @@ public: // ctor
 
 
 		// Add new nodes of new position
-		l.add_wallCylinder(Cyl_center, Cyl_radius);
+		l.add_wallCylinder(Cyl_center, Cyl_vel, Cyl_radius, using_flagella, partition, *this);
 
 
 		// Update Properties of all nodes of new position inside the solid
@@ -775,7 +778,7 @@ public: // ctor
 	}
 
 	/** @brief Apply all Boundary Conditions */
-	void Adapt_flagella(const std::vector<double>& Moments)
+	void Adapt_flagella(const std::vector<float_type>& Moments)
 	{
 		unsigned int n_links = Moments.size();
 
@@ -822,7 +825,8 @@ public: // ctor
 
 		l.fluid_boundary_nodes.resize(l.cylinder_fbn.size());
 
-		flg->step(Moments,1.);
+		float_type dt = 1.0;
+		flg->step(Moments,dt);
 		//adding the flagella nodes and corresponding fluid boundary nodes to the lattice
 		l.add_flagella_nodes(flg,Cyl_vel, Cyl_radius,partition,*this);
 		l.merge_into_fbn(using_flagella);
