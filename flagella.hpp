@@ -8,7 +8,7 @@
 #include "global.hpp"
 #include <cmath>
 #include <utility>
-
+#include "velocity_set.hpp"
 #include <boost/numeric/odeint/config.hpp>
 #include <boost/numeric/odeint.hpp>
 #include <boost/numeric/ublas/io.hpp>
@@ -25,7 +25,7 @@ using namespace std;
 namespace lb{
 
 class flagella{
-	
+
 	//using float_type = double;
 
 	//Flagella
@@ -79,7 +79,7 @@ public:
 
 			txt_a.open("Alpha.txt",std::ios::out);
 			for( int i= 0; i<n; ++i)
-				txt_a << std::setw(15) << "#alpha_" << std::to_string(i) << ": "; 
+				txt_a << std::setw(15) << "#alpha_" << std::to_string(i) << ": ";
 			txt_a <<std::endl;
 		}
 
@@ -110,7 +110,7 @@ public:
 
 			txt_a.open("Alpha.txt",std::ios::out);
 			for( int i= 0; i<n; ++i)
-				txt_a << std::setw(15) << "#alpha_" << std::to_string(i) << ": "; 
+				txt_a << std::setw(15) << "#alpha_" << std::to_string(i) << ": ";
 			txt_a <<std::endl;
 			}
 
@@ -132,7 +132,7 @@ public:
 
 	void writeOut(boost::numeric::ublas::matrix<double> M);
 	coordinate<float_type> getX0(){coordinate<float_type> x0; x0.i = x; x0.j=y; return x0; }
-	
+
 
 	float_type eval_M(int link_no, double Fx, double Fy, unsigned int xb, unsigned int yb);
 	std::pair<coordinate<int>, coordinate<int>> get_bbox();
@@ -147,7 +147,97 @@ public:
 	float_type getY(int j){updx(); return x_vec[0][j];};
 	std::vector<float_type> getCoord(int i){updx(); return x_vec[i];}
 	float_type sumMass(int first, int last);
+	std::pair<std::vector<double>,bool> check_intersection (const unsigned int&,
+																													const unsigned int&,
+																													const unsigned int&);
 };
+
+std::pair<double,double> line(const double& x0, const double& y0
+															const double& x1, const double& y1)  //returns m and c for line y=mx+c passing through these two points
+	{
+		double m = (y1-y0)/(x1-x0);
+		double c = y1-m*x1;
+		return std::make_pair(m,c);
+	}
+
+std::pair<std::pair<double,double>,bool> intersection(const double& i0, const double& j0,  //i,j denote lattice points
+																											const double& i1, const double& j1,
+																											const double& x0, const double& y0,  //x,y denote link points
+																											const double& x1, const double& y1)
+	{
+		std::pair<double,double> line1,line2;
+		line1 = line(i0,j0,i1,j1); line2 = line(x0,y0,x1,y1);
+		bool is_intersecting = false;
+		double x_in = 0 ,y_in = 0;
+		double m1,c1,m2,c2;
+		m1 = line1.first; c1 = line1.second; m2 = line2.first; c2 = line2.second;
+		if (fabs(m1-m2) < 1e-3) //if slopes are close
+		{
+			return std::make_pair(std::make_pair(x_in,y_in),is_intersecting);
+		}
+		else
+		{
+			//check the intersection of line segments
+			bool segment_intersection1 = ( (m1*x0+c1-y0) * (m1*x1+c1-y1) ) <= 0;
+			bool segment_intersection2 = ( (m2*i0+c2-j0) * (m2*i1+c2-j1) ) <= 0;
+			if (segment_intersection1 and segment_intersection2)
+			{
+				x_in = (c2-c1)/(m1-m2);  //the intersection points in cartesian coordinate system
+				y_in = m1*x_in + c1;
+				is_intersecting = true;
+				return std::make_pair(std::make_pair(x_in,y_in),is_intersecting);
+			}
+			else
+				return std::make_pair(std::make_pair(x_in,y_in),is_intersecting);
+		}
+	}
+
+std::pair<std::vector<double>,bool> check_intersection (const unsigned int& i0,
+																												const unsigned int& j0,
+																												const unsigned int& dir)
+	{
+		std::vector<double> q(n,1); std::vector<std::pair<double,double>> intersection_pts(n,std::make_pair(0.,0.) );
+		bool is_intersecting = false;
+		unsigned int i1,j1; i1 = i0 + velocity_set().c[0][k]; j1 = j0 + velocity_set().c[1][k];
+		int L = -1; double uw=0,vw=0,q = 1.1;
+		//checking intersection with all the links
+		for (unsigned int l = 0 ; l<n ; ++l)
+		{
+			if (l == 0)
+			{
+				double x0 = x_0, y0 = y_0, x1 = x_vec[0][0] , y1 = x_vec[0][1];
+			}
+			else
+			{
+				double x0 = x_vec[l-1][0], y0 = x_vec[l-1][1], x1 = x_vec[l][0] , y1 = x_vec[l][1];
+			}
+			std::pair<double,double> intersection_pt; bool is_intersecting_l;
+			std::tie(intersection_pt,is_intersecting_l) = intersection( i0,j0,
+																																i1,j1,
+																																x0,y0,
+																																x1,y1);
+			if(is_intersecting_l)
+			{
+				is_intersecting = true;
+				double qtemp = std::sqrt( std::pow((i0-intersection_pt.first),2) +
+																	std::pow((j0-intersection_pt.second),2) );
+				if (qtemp < q)
+				{
+					q = qtemp;
+					L = l;
+					double r = std::sqrt( std::pow((x0-intersection_pt.first),2) +
+																std::pow((y0-intersection_pt.second),2) );
+					double v = r * alpha_dot[l];
+					uw = -v*sin(alpha[l]);
+					vw = v*cos(alpha[l]);
+				}
+				//break;
+			}
+		}
+		std::vector<double> l_q_uw_vw;
+		l_q_uw_vw.push_back(L); l_q_uw_vw.push_back(q); l_q_uw_vw.push_back(uw); l_q_uw_vw.push_back(vw);
+		return std::make_pair(l_q_uw_vw,is_intersecting);
+	}
 
 void flagella::getRHS1D(const state_type &x, state_type &dxdt, const double time){
 	int k = 0;
@@ -159,8 +249,8 @@ void flagella::getRHS1D(const state_type &x, state_type &dxdt, const double time
 	partk = l[0]*l[0]*(0.25*m[0] + theta[0]);
 	dxdt[1] = RHS/partk;
 	dd_alpha[0] = dxdt[1];
- 
-};	
+
+};
 
 void flagella::getRHS2D(const state_type &x, state_type &dxdt, const double time){
 	int k = 0;
@@ -179,8 +269,8 @@ void flagella::getRHS2D(const state_type &x, state_type &dxdt, const double time
 	partk = l[1]*l[1]*(0.25*m[1] + theta[1]);
 	dxdt[3] = RHS/partk;
 	dd_alpha[1] = dxdt[3];
- 
-};	
+
+};
 
 void flagella::getRHSMatrix(const state_type &x, state_type &dxdt, const double time){
 	boost::numeric::ublas::matrix<double>  Matrix (n,n);
@@ -203,7 +293,7 @@ void flagella::getRHSMatrix(const state_type &x, state_type &dxdt, const double 
 	        for (int j =0; j < k-1; ++j){
 	            Matrix(k,j) = l[j]* l[k] *( 0.5 * m[j]+ sumMass(j+1, n))*cos(x[2*k]-x[2*j]);
 	            RHS(k) = RHS(k) - x[j*2+1]*x[j*2+1] * l[j]* l[k] *( 0.5 * m[j]+ sumMass(j+1, n))*sin(x[2*k]-x[2*j]);
-			}	
+			}
 		}
 		else{
 			RHS(k) = Q[k] - k_spring[k]*(x[i]-x[i-2]) +k_spring[k+1]*(x[i+2]-x[i])- B[k]*x[i+1] - l[k]* ( 0.5 *m[k]+ sumMass(k+1, n))*(-x_dd *sin(x[2*k])+y_dd*cos(x[2*k]));
@@ -251,7 +341,7 @@ void flagella::getRHSMatrix(const state_type &x, state_type &dxdt, const double 
 	}
 
 	//writeOut(Matrix);
-	//std::cout << "afterwards" << std::endl;	
+	//std::cout << "afterwards" << std::endl;
 
 	for(int i = 0; i<2*n;++i){
 		if(i%2==0)
@@ -275,7 +365,7 @@ void flagella::writeOut(boost::numeric::ublas::matrix<double> M){
 
 //dt alpha_1, ddt alpha_1,
 void flagella::GetRHS(const state_type &x, state_type &dxdt, const double time){
-	
+
 	int k = 0;
 	float_type part1, part2, part3, part4, partk, RHS;
 
@@ -325,7 +415,7 @@ void flagella::GetRHS(const state_type &x, state_type &dxdt, const double time){
 					part4 = part4 + x[j*2 + 1]*x[j*2 + 1] * l[j]* l[k] *( 0.5 * m[j]+ sumMass(j+1, n))*sin(x[2*k]-x[2*j]);
 				}
 			}
-			
+
 			partk = l[k]*l[k]*(0.25*m[k] + sumMass(k+1, n))+ theta[k];
 			dxdt[i] = (RHS -part1 - part2 -part2- part4)/partk;
 			dd_alpha[k] = dxdt[i];
@@ -365,7 +455,7 @@ void flagella::getJacobi(const state_type &x, matrix_type &J, const double time)
 			if(k>0){
 				J(j,2*(k-1)) = - x[2*k+1]*x[2*k+1]*l[k]*l[k-1]*(0.5*m[k]+sumMass(k+1,n))*cos(x[2*k]- x[2*(k-1)]) - k_spring[k];
 			}
-	
+
 			//i=k
 			J(j,2*k) = k_spring[k]+k_spring[k+1] - l[k]*(0.5*m[k]+ sumMass(k+1,n))*(x_dd*cos(x[2*k])+y_dd*sin(x[2*k]));
 			for(int i=0; i < k-1; ++i){
@@ -374,7 +464,7 @@ void flagella::getJacobi(const state_type &x, matrix_type &J, const double time)
 			for(int i = k+1; i < n; ++i){
 				J(j,2*k) = J(k,k) - x[2*i+1]*x[2*i+1]*l[k]*l[i]*(0.5*m[k]+sumMass(i+1,n))*sin(x[2*k]- x[2*i]);
 			}
-	
+
 			//i>k
 			if(k<n-1){
 				J(j,2*(k+1))= - x[2*k+1]*x[2*(k+1)+1]*l[k]*l[k+1]*(0.5*m[k]+sumMass(k+2,n))*cos(x[2*k]- x[2*(k+1)]) +k_spring[k+1];
@@ -382,7 +472,7 @@ void flagella::getJacobi(const state_type &x, matrix_type &J, const double time)
 			for( int i = k+2; i < n; ++i){
 				J(j,2*i) = - x[2*i+1]*x[2*i+1]*l[k]*l[i]*(0.5*m[k]+sumMass(i+1,n))*cos(x[2*k]- x[2*(i)]);
 			}
-		
+
 			//From angular vel.
 			//i<k
 			for(int i = 0; i<k; ++i){
@@ -408,7 +498,7 @@ void flagella::step(float_type delta_t){
 	boost::numeric::odeint::runge_kutta_cash_karp54<state_type> stepper; //seems to be the best
 	//boost::numeric::odeint::runge_kutta_dopri5<state_type> stepper;
 	//boost::numeric::odeint::bulirsch_stoer<state_type> stepper;
-	
+
 	if(n==1){
 		boost::numeric::odeint::integrate(std::bind(&flagella::getRHS1D, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), alpha, float_type(0.0), delta_t, delta_t/split);
 	}
@@ -422,7 +512,7 @@ void flagella::step(float_type delta_t){
 		 alpha, float_type(0.0), delta_t, delta_t/split);*/
 	}
 	//*/
-	
+
 
 	//boost::numeric::odeint::integrate(std::bind(&flagella::GetRHS, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), alpha, float_type(0.0), delta_t, delta_t/split);
 	//Update second derivatives of the angle
@@ -532,4 +622,3 @@ void flagella::updateX0(int time){
 }
 
 #endif // FlAG_HPP
-
