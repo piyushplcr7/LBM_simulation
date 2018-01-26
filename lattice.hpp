@@ -559,7 +559,7 @@ void lattice::add_wall(coordinate<int> min_coord, coordinate<int> max_coord)
 	}
 }
 
-void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], float_type radius,bool using_flagella, unsigned int partition) //function to mark the solid nodes (In and on the cylinder) & Fluid Boundary Nodes(some of whose populations come from solid)
+void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], float_type radius,bool using_flagella, unsigned int partition, const simulation& sim) //function to mark the solid nodes (In and on the cylinder) & Fluid Boundary Nodes(some of whose populations come from solid)
 { //ensure the partition here if flagella is used
 	std::vector<node> not_solid;
 	int x1 = floor(center[0] - radius)-1;  int y1 = floor(center[1] - radius)-1;
@@ -598,7 +598,7 @@ void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], floa
 		{
 			if ( get_node(x + velocity_set().c[0][i] ,y + velocity_set().c[1][i] ).has_flag_property("solid") ) // if the adjacent node (according to Ci is a solid node)
 			{
-				double q = simulation::get_qi(*it,i);
+				double q = sim.get_qi(*it,i);
 				double uw = Cyl_vel[0], vw = Cyl_vel[1];
 				if ( !cylinder_fbn.empty() )
 				{
@@ -623,9 +623,10 @@ void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], floa
 	not_solid.clear();
 }
 
-void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, unsigned int partition)
+void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, unsigned int partition, const simulation& sim)
 {
 	coordinate<float_type> P0 = flg->getX0();
+	unsigned int x = fabs(P0.i - partition);
 	const unsigned int n_links = flg->n; //n_links is the number of links in flagella
 	flagella_nodes.resize(n_links);
 	coordinate<int> min,max;
@@ -634,7 +635,7 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, 
 	min.i = partition;  													//assumed that the flagella is on right of the cylinder
 	unsigned int y =
 			(unsigned int) std::sqrt(std::pow(R,2)
-															-std::pow(partition,2));	//y is the half distance
+															-std::pow(x,2));	//y is the half distance
 	if (y < max.j-min.j)
 		y = max.j - min.j;
 	y = y+5;
@@ -678,7 +679,7 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, 
 					{
 						if ( get_node(i + velocity_set().c[0][dir] ,j + velocity_set().c[1][dir] ).has_flag_property("solid") ) // if the adjacent node (according to Ci is a solid/cylinder node)
 						{
-							double q = simulation::get_qi(get_node(i,j),dir);
+							double q = sim.get_qi(get_node(i,j),dir);
 							double uw = Cyl_vel[0], vw = Cyl_vel[1];
 							if ( !cylinder_fbn_f.empty() )
 							{
@@ -712,22 +713,22 @@ void lattice::merging_helper(/*unsigned int location,*/ const std::vector<node>:
 	unsigned int i = it->coord.i,j = it->coord.j;
 	//adding the missing populations to the nodes in lattice
 	get_node(i,j).missing_populations.insert	(
-			get_node(i,j).missing_populations.back(),
+			get_node(i,j).missing_populations.end(),
 			it->missing_populations.begin(),
 			it->missing_populations.end()		);
 	//adding the q values
 	get_node(i,j).q_i.insert	(
-			get_node(i,j).q_i.back(),
+			get_node(i,j).q_i.end(),
 			it->q_i.begin(),
 			it->q_i.back()					);
 	//adding the wall velocities
 	get_node(i,j).uvw_i.insert	(
-			get_node(i,j).uvw_i.back(),
+			get_node(i,j).uvw_i.end(),
 			it->uvw_i.begin(),
 			it->uvw_i.end()					);
 	//adding the s_di_populations
 	get_node(i,j).s_di_populations.insert	(
-			get_node(i,j).s_di_populations.back(),
+			get_node(i,j).s_di_populations.end(),
 			it->s_di_populations.begin(),
 			it->s_di_populations.end()					);
 }

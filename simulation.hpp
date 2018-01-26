@@ -78,7 +78,7 @@ public: // ctor
 			partition = l.nx;
 		//force.open("Force.txt",std::ios::out);
 		//force << std::setw(10) << "Fx: " << std::setw(10) << "Fy: " << "\n";
-		l.add_wallCylinder(Cyl_center, Cyl_vel, Cyl_radius,using_flagella,partition);
+		l.add_wallCylinder(Cyl_center, Cyl_vel, Cyl_radius,using_flagella,partition, *this);
 
 		//initialize flagella
 		if (using_flagella)
@@ -88,7 +88,7 @@ public: // ctor
 			double length = 10,mass = 1,K=10,c=0.1;
 			flg = new flagella(n_links, length, mass, K, c, attach_point.i, attach_point.j, 0, 0);
 			//adding the flagella nodes and corresponding fluid boundary nodes to the lattice
-			l.add_flagella_nodes(flg, Cyl_vel, Cyl_radius, partition);
+			l.add_flagella_nodes(flg, Cyl_vel, Cyl_radius, partition, *this);
 		}
 
 		//Merge different fluid boundary nodes with different directions into one
@@ -196,7 +196,7 @@ public: // ctor
 	}
 
 	/**  @brief calculate fraction of fluid from node n to the solid boundary along the direction i */
-	static float_type get_qi(const node& n,const int& i){
+	static float_type get_qi(const node& n,const int& i) const{
 		double x1 = (double)n.coord.i; double y1 = (double)n.coord.j;
 		double x2 =  x1 + (double)velocity_set().c[0][i]; double y2 =  y1 + (double)velocity_set().c[1][i];
 		assert(l.get_node((int)x2,(int)y2).has_flag_property("solid"));
@@ -775,7 +775,7 @@ public: // ctor
 	}
 
 	/** @brief Apply all Boundary Conditions */
-	void Adapt_flagella(const std::vector<float_typeget>& Moments)
+	void Adapt_flagella(const std::vector<double>& Moments)
 	{
 		unsigned int n_links = Moments.size();
 
@@ -815,7 +815,7 @@ public: // ctor
 			l.get_node(i,j).uvw_i.resize(reset_size);
 			l.get_node(i,j).s_di_populations.resize(reset_size);
 			for (unsigned int temp = 0 ; temp < reset_size ; ++temp)
-				l.get_node(i,j).s_di_populations[temp] = l.get_node(i,j).f(missing_populations[temp]);
+				l.get_node(i,j).s_di_populations[temp] = l.get_node(i,j).f(it->missing_populations[temp]);
 			/*if ( !l.get_node(i,j).has_flag_property("Fluid_Boundary_Node") )
 				l.get_node(i,j).set_flag_property("Fluid_Boundary_Node");*/
 		}
@@ -824,7 +824,7 @@ public: // ctor
 
 		flg->step(Moments,1.);
 		//adding the flagella nodes and corresponding fluid boundary nodes to the lattice
-		l.add_flagella_nodes(flg,Cyl_vel, Cyl_radius,partition);
+		l.add_flagella_nodes(flg,Cyl_vel, Cyl_radius,partition,*this);
 		l.merge_into_fbn(using_flagella);
 	}
 
