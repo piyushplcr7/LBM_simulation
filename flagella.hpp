@@ -152,9 +152,9 @@ public:
 	float_type getY(int j){updx(); return x_vec[0][j];};
 	std::vector<float_type> getCoord(int i){updx(); return x_vec[i];}
 	float_type sumMass(int first, int last);
-	std::pair<std::vector<double>,bool> check_intersection (const unsigned int&,
+	bool check_intersection (const unsigned int&,
 																													const unsigned int&,
-																													const unsigned int&);
+																													const unsigned int&,std::vector<double>&);
 };
 
 std::pair<double,double> line(const double& x0, const double& y0,
@@ -165,20 +165,21 @@ std::pair<double,double> line(const double& x0, const double& y0,
 		return std::make_pair(m,c);
 	}
 
-std::pair<std::pair<double,double>,bool> intersection(const double& i0, const double& j0,  //i,j denote lattice points
+	bool intersection(const double& i0, const double& j0,  //i,j denote lattice points
 																											const double& i1, const double& j1,
 																											const double& x0, const double& y0,  //x,y denote link points
-																											const double& x1, const double& y1)
+																											const double& x1, const double& y1, 
+																											double& x_in, double& y_in)
 	{
 		std::pair<double,double> line1,line2;
 		line1 = line(i0,j0,i1,j1); line2 = line(x0,y0,x1,y1);
 		bool is_intersecting = false;
-		double x_in = 0 ,y_in = 0;
+		//double x_in = 0 ,y_in = 0;
 		double m1,c1,m2,c2;
 		m1 = line1.first; c1 = line1.second; m2 = line2.first; c2 = line2.second;
 		if (fabs(m1-m2) < 1e-3) //if slopes are close
 		{
-			return std::make_pair(std::make_pair(x_in,y_in),is_intersecting);
+			x_in = 0; y_in = 0; return is_intersecting;
 		}
 		else
 		{
@@ -190,23 +191,23 @@ std::pair<std::pair<double,double>,bool> intersection(const double& i0, const do
 				x_in = (c2-c1)/(m1-m2);  //the intersection points in cartesian coordinate system
 				y_in = m1*x_in + c1;
 				is_intersecting = true;
-				return std::make_pair(std::make_pair(x_in,y_in),is_intersecting);
+				return is_intersecting;
 			}
 			else
-				return std::make_pair(std::make_pair(x_in,y_in),is_intersecting);
+				return is_intersecting;
 		}
 	}
 
-std::pair<std::vector<double>,bool> flagella::check_intersection (const unsigned int& i0,
+bool flagella::check_intersection (const unsigned int& i0,
 																												const unsigned int& j0,
-																												const unsigned int& dir)
+																												const unsigned int& dir,std::vector<double>& l_q_uw_vw)
 	{
 
 		double x0, y0, x1,y1;/*
 		std::vector<double> q(n,1);*/ std::vector<std::pair<double,double>> intersection_pts(n,std::make_pair(0.,0.) );
 		bool is_intersecting = false;
 		unsigned int i1,j1; i1 = i0 + velocity_set().c[0][dir]; j1 = j0 + velocity_set().c[1][dir];
-		int L = -1; double uw=0,vw=0,q = 1.1;
+		int L = -1; double uw=0,vw=0,q = 1.5;
 		//checking intersection with all the links
 		for (unsigned int l = 0 ; l<n ; ++l)
 		{
@@ -220,12 +221,13 @@ std::pair<std::vector<double>,bool> flagella::check_intersection (const unsigned
 			}
 
 			std::pair<double,double> intersection_pt; bool is_intersecting_l;
-			std::tie(intersection_pt,is_intersecting_l) = intersection( i0,j0,
+			is_intersecting_l = intersection( i0,j0,
 																																i1,j1,
 																																x0,y0,
-																																x1,y1);
+																																x1,y1, intersection_pt.first, intersection_pt.second);
 			if(is_intersecting_l)
 			{
+				std::cout << l << std::endl;
 				is_intersecting = true;
 				double qtemp = std::sqrt( std::pow((i0-intersection_pt.first),2) +
 																	std::pow((j0-intersection_pt.second),2) );
@@ -242,9 +244,9 @@ std::pair<std::vector<double>,bool> flagella::check_intersection (const unsigned
 				//break;
 			}
 		}
-		std::vector<double> l_q_uw_vw;
+		//std::vector<double> l_q_uw_vw;
 		l_q_uw_vw.push_back(L); l_q_uw_vw.push_back(q); l_q_uw_vw.push_back(uw); l_q_uw_vw.push_back(vw);
-		return std::make_pair(l_q_uw_vw,is_intersecting);
+		return is_intersecting;
 	}
 
 void flagella::getRHS1D(const state_type &x, state_type &dxdt, const double time){
