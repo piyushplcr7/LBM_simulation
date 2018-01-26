@@ -1,5 +1,5 @@
-//#include "lattice.hpp"
-#include "simulation.hpp"
+#include "lattice.hpp"
+//#include "simulation.hpp"
 #ifdef USE_OPENGL_VISUALIZATION
 #include "visualization.hpp"
 #endif
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 
 
 		std::ofstream force,v1,v2,v3,v4;
-		
+
 		force.open("Force.txt",std::ios::out);
 		v1.open("v_400_200.txt",std::ios::out);
 		v2.open("v_400_250.txt",std::ios::out);
@@ -71,8 +71,8 @@ int main(int argc, char *argv[])
 
 		for (unsigned int i=0; i<Time; ++i)
 		{
-			
-			//if(i==1) {sim->l.write_fields(file_name);}			
+
+			//if(i==1) {sim->l.write_fields(file_name);}
 			sim->step();
 			force << std::setw(15) << sim->Fx_ << std::setw(15) << sim->Fy_ << "\n";
 			v1 << std::setw(15) << sim->l.get_node(400,200).u() << std::setw(15) << sim->l.get_node(400,200).v() << "\n";
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 			v4 << std::setw(15) << sim->l.get_node(600,250).u() << std::setw(15) << sim->l.get_node(600,250).v() << "\n";
 			//Write to files
 			if(i > 30000 and i < 35000){
-				std::string file_name = file_name_basic + "_" + std::to_string(i) + ".txt";			
+				std::string file_name = file_name_basic + "_" + std::to_string(i) + ".txt";
 				sim->l.write_fields(file_name);
 			}
 

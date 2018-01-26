@@ -11,14 +11,14 @@
 //#include "distance.hpp"
 #include "flagella.hpp"
 #include "property_array.hpp"
-//#include "simulation.hpp"
+#include "simulation.hpp"
 #include <vector>
 #include <fstream>
 #include<cassert>
 
 namespace lb {
 
-class simulation;
+//class simulation;
 class lattice; // forward declaration
 
 /**
