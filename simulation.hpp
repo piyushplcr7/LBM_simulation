@@ -74,25 +74,38 @@ public: // ctor
 		Cyl_vel[0] = 0.0;
 		Cyl_vel[1] = 0.0;
 
+		partition = Cyl_center_0[0] + Cyl_radius - 20 ;
+
 		if (!using_flagella)
 			partition = l.nx;
 		//force.open("Force.txt",std::ios::out);
 		//force << std::setw(10) << "Fx: " << std::setw(10) << "Fy: " << "\n";
-		l.add_wallCylinder(Cyl_center, Cyl_vel, Cyl_radius,using_flagella,partition, *this);
+		std::cout << " Starting to add Cylinder nodes" << std::endl;
+		l.add_wallCylinder(Cyl_center, Cyl_vel, Cyl_radius,using_flagella,partition);
+
+		std::cout << "Cylinder nodes added" <<std::endl;
 
 		//initialize flagella
 		if (using_flagella)
 		{
+			
 			coordinate<float> attach_point = {Cyl_center[0]+Cyl_radius,Cyl_center[1]};
+			std::cout << "Attachment Point: " << attach_point.i << "   " << attach_point.j << std::endl;
+			std::cout << "Partition Value: " << partition << std::endl;
 			unsigned int n_links = 2;
 			double length = 10,mass = 1,K=10,c=0.1;
 			flg = new flagella(n_links, length, mass, K, c, attach_point.i, attach_point.j, 0, 0);
+			std::cout << "Flagella created" << std::endl;
 			//adding the flagella nodes and corresponding fluid boundary nodes to the lattice
-			l.add_flagella_nodes(flg, Cyl_vel, Cyl_radius, partition, *this);
+			l.add_flagella_nodes(flg, Cyl_vel, Cyl_center, Cyl_radius, partition);
+			std::cout << "Flagella nodes added" <<std::endl;
 		}
 
 		//Merge different fluid boundary nodes with different directions into one
 		l.merge_into_fbn(using_flagella);
+
+		std::cout << "Fluid Boundary Nodes merged " << std::endl;
+
 		//Init B.C.
 		u_inlet = 0.05;
 		runUptime = 0;
@@ -653,7 +666,7 @@ public: // ctor
 
 
 		// Add new nodes of new position
-		l.add_wallCylinder(Cyl_center, Cyl_vel, Cyl_radius, using_flagella, partition, *this);
+		l.add_wallCylinder(Cyl_center, Cyl_vel, Cyl_radius, using_flagella, partition);
 
 
 		// Update Properties of all nodes of new position inside the solid
@@ -828,7 +841,7 @@ public: // ctor
 		float_type dt = 1.0;
 		flg->step(Moments,dt);
 		//adding the flagella nodes and corresponding fluid boundary nodes to the lattice
-		l.add_flagella_nodes(flg,Cyl_vel, Cyl_radius,partition,*this);
+		l.add_flagella_nodes(flg,Cyl_vel, Cyl_center, Cyl_radius,partition);
 		l.merge_into_fbn(using_flagella);
 	}
 
