@@ -48,6 +48,7 @@ class flagella{
 	float_type x_dd, y_dd;
 	std::vector<float_type> Q;
 	std::vector<std::vector<float_type>> x_vec;
+	float_type ymin, xmin, ymax, xmax;
 	bool flag_out;
 
 public:
@@ -422,7 +423,7 @@ void flagella::step(float_type delta_t){
 		 alpha, float_type(0.0), delta_t, delta_t/split);*/
 	}
 	//*/
-	
+	updx();
 
 	//boost::numeric::odeint::integrate(std::bind(&flagella::GetRHS, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), alpha, float_type(0.0), delta_t, delta_t/split);
 	//Update second derivatives of the angle
@@ -465,26 +466,7 @@ float_type flagella::eval_M(int link_no, double Fx, double Fy, unsigned int xb, 
 
 std::pair<coordinate<int>, coordinate<int>> flagella::get_bbox(){
 	coordinate<int> min,max;
-	float_type xmin, xmax, ymin, ymax;
 	int safety = 2;
-
-	x_vec[0][0] = x_0 + l[0] * cos(alpha[0]);
-	x_vec[0][1] = y_0 + l[0] * sin(alpha[0]);
-	xmin = x_vec[0][0]; xmax = x_vec[0][0];
-	ymin = x_vec[0][1]; ymax = x_vec[0][1];
-
-	for( int i = 1; i < n; ++i){
-		x_vec[i][0] = x_vec[i-1][0] + l[1] * cos(alpha[1]);
-		x_vec[i][1] = x_vec[i-1][1] + l[1] * sin(alpha[1]);
-		if(xmin > x_vec[i][0])
-			xmin = x_vec[i][0];
-		else if(xmax < x_vec[i][0])
-			xmax = x_vec[i][0];
-		if(ymin > x_vec[i][1])
-			ymin = x_vec[i][1];
-		else if(ymax < x_vec[i][1])
-			ymax = x_vec[i][1];
-	}
 
 	min.i = (int) xmin - safety;
 	min.j = (int) ymin - safety;
@@ -496,12 +478,23 @@ std::pair<coordinate<int>, coordinate<int>> flagella::get_bbox(){
 
 //Update Coordinates
 void flagella::updx(){
+
 	x_vec[0][0] = x_0 + l[0] * cos(alpha[0]);
 	x_vec[0][1] = y_0 + l[0] * sin(alpha[0]);
+	xmin = x_vec[0][0]; xmax = x_vec[0][0];
+	ymin = x_vec[0][1]; ymax = x_vec[0][1];
 
 	for( int i = 1; i < n; ++i){
-		x_vec[i][0] = x_vec[i-1][0] + l[1] * cos(alpha[1]);
-		x_vec[i][1] = x_vec[i-1][1] + l[1] * sin(alpha[1]);
+		x_vec[i][0] = x_vec[i-1][0] + l[i] * cos(alpha[i]);
+		x_vec[i][1] = x_vec[i-1][1] + l[i] * sin(alpha[i]);
+		if(xmin > x_vec[i][0])
+			xmin = x_vec[i][0];
+		else if(xmax < x_vec[i][0])
+			xmax = x_vec[i][0];
+		if(ymin > x_vec[i][1])
+			ymin = x_vec[i][1];
+		else if(ymax < x_vec[i][1])
+			ymax = x_vec[i][1];
 	}
 }
 
