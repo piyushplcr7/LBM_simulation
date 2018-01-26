@@ -683,7 +683,7 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float_typ
 		{
 			if ( !get_node(i,j).has_flag_property("solid") )
 			{
-				std::cout << i << "  "<< j<< std::endl;
+				//std::cout << i << "  "<< j<< std::endl;
 				for (unsigned int dir = 0 ; dir<velocity_set().size ; ++dir)
 				{
 					//check intersection with flagella first
@@ -691,17 +691,17 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float_typ
 					intersect_with_flagella = flg->check_intersection(i,j,dir, l_q_uw_vw);
 					if ( intersect_with_flagella )
 					{
-						std::cout << "Flagella  //" << "Size of l_q_uw_vw" << l_q_uw_vw.size() << " " << flagella_nodes.size() << std::endl;
+						//std::cout << "Flagella  //" << "Size of l_q_uw_vw" << l_q_uw_vw.size() << " " << flagella_nodes.size() << std::endl;
 						unsigned int link_no = (unsigned int) l_q_uw_vw[0];
 						double q;
 						if(dir < 5) {q=l_q_uw_vw[1];}
 						else {q=l_q_uw_vw[1]/sqrt(2);}
 						assert(q<=1.);
 						double uw=l_q_uw_vw[2],vw= l_q_uw_vw[3];
-						std::cout << l_q_uw_vw[0] << " " << l_q_uw_vw[1] << " " << l_q_uw_vw[2] << " " << " " << l_q_uw_vw[3] << " "  <<std::endl;;
+						//std::cout << l_q_uw_vw[0] << " " << l_q_uw_vw[1] << " " << l_q_uw_vw[2] << " " << " " << l_q_uw_vw[3] << " "  <<std::endl;;
 						if ( !flagella_nodes[link_no].empty() )
 						{
-							std::cout << "IF reached" ;
+							//std::cout << "IF reached" ;
 							if ( get_node(i,j).index != flagella_nodes[link_no].back().index )
 								flagella_nodes[link_no].push_back(get_node(i,j));
 							flagella_nodes[link_no].back().add_missing_populations(dir);
@@ -711,7 +711,7 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float_typ
 						}
 						else
 						{
-							std::cout << "Else reached" ;
+							//std::cout << "Else reached" ;
 							flagella_nodes[link_no].push_back(get_node(i,j));
 							flagella_nodes[link_no].back().add_missing_populations(dir);
 							flagella_nodes[link_no].back().q_i.push_back(q);
@@ -724,7 +724,7 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float_typ
 						
 						if ( get_node(i + velocity_set().c[0][dir] ,j + velocity_set().c[1][dir] ).has_flag_property("solid") ) // if the adjacent node (according to Ci is a solid/cylinder node)
 						{
-							std::cout << "cylinder fbn" << std::endl;
+							//std::cout << "cylinder fbn" << std::endl;
 							double q = get_qi(get_node(i,j),dir, Cyl_center, R);
 							//double q = sim.get_qi(get_node(i,j),dir);
 							double uw = Cyl_vel[0], vw = Cyl_vel[1];
@@ -753,6 +753,8 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float_typ
 		}
 	}
 	std::cout << "add_flagella_nodes end reached" << std::endl;
+	std::cout << "number of variable cylinder boundary nodes: " << cylinder_fbn_f.size() << std::endl;
+	std::cout << "number of First link boundary nodes: " << flagella_nodes[0].size() << std::endl;
 
 }
 

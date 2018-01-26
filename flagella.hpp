@@ -152,6 +152,7 @@ public:
 	float_type getY(int j){updx(); return x_vec[0][j];};
 	std::vector<float_type> getCoord(int i){updx(); return x_vec[i];}
 	float_type sumMass(int first, int last);
+	void writeAlphas(){ std::cout << "Alphas:" << std::endl; for(int i = 0; i<n;++i){std::cout << i << "  " << alpha[2*i] << std::endl; }}
 	bool check_intersection (const unsigned int&,
 																													const unsigned int&,
 																													const unsigned int&,std::vector<double>&);
@@ -227,7 +228,7 @@ bool flagella::check_intersection (const unsigned int& i0,
 																																x1,y1, intersection_pt.first, intersection_pt.second);
 			if(is_intersecting_l)
 			{
-				std::cout << l << std::endl;
+				//std::cout << l << std::endl;
 				is_intersecting = true;
 				double qtemp = std::sqrt( std::pow((i0-intersection_pt.first),2) +
 																	std::pow((j0-intersection_pt.second),2) );
@@ -557,12 +558,13 @@ float_type flagella::eval_M(int link_no, double Fx, double Fy, unsigned int xb, 
 	dy = y2-y1;
 	t = ( (dx)*(xb-x1)+(dy)*(yb-y1) )/( dx*dx + dy*dy); //find t of line equation for shortest distance
 	moment = (xb-x1)*t*Fy -(yb-y1)*t*Fx; //calculate moment from forces on the link*/
+	std::cout << x1 << "  " << y1 << "  " << xb << "  " << yb <<  "  " << Fx << "  " << Fy << std::endl;
 	moment = (xb-x1)*Fy - (yb-y1)*Fx;
 	return moment;
 }
 
 void flagella::get_bbox(coordinate<int> & min, coordinate<int>& max ){
-	int safety = 2;
+	int safety = 3;
 
 	min.i = (int) xmin - safety;
 	min.j = (int) ymin - safety;

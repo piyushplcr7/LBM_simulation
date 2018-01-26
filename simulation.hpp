@@ -42,7 +42,7 @@ public: // ctor
 	  shift(velocity_set().size),
 	  Re(_Re),
 	  Vmax(_Vmax),
-		Cyl_radius(nx/80),
+		Cyl_radius(nx/20),
 	  visc(Vmax*Cyl_radius*2/Re),
 	  beta(1./(6*visc+1)),
 	  time(0),
@@ -92,8 +92,8 @@ public: // ctor
 			coordinate<float> attach_point = {Cyl_center[0]+Cyl_radius,Cyl_center[1]};
 			std::cout << "Attachment Point: " << attach_point.i << "   " << attach_point.j << std::endl;
 			std::cout << "Partition Value: " << partition << std::endl;
-			unsigned int n_links = 2;
-			double length = 10,mass = 1,K=10,c=0.1;
+			unsigned int n_links = 1;
+			double length = 20, mass = 100, K=10, c=0.1;
 			flg = new flagella(n_links, length, mass, K, c, attach_point.i, attach_point.j, 0, 0);
 			std::cout << "Flagella created" << std::endl;
 			//adding the flagella nodes and corresponding fluid boundary nodes to the lattice
@@ -108,9 +108,9 @@ public: // ctor
 
 		//Init B.C.
 		u_inlet = 0.05;
-		runUptime = 0;
+		runUptime = 200;
 		rho_inlet = 1;
-		bool flag_Complete_Init = true;
+		bool flag_Complete_Init = !true;
 		//const float_type pi(std::acos(-1.0));
 
 		//#pragma omp parallel for
@@ -147,6 +147,16 @@ public: // ctor
 				}
 			}
 		} //loop j ends
+
+		l.add_wallCylinder(Cyl_center, Cyl_vel, Cyl_radius,using_flagella,partition);
+		if (using_flagella)
+		{
+			l.add_flagella_nodes(flg, Cyl_vel, Cyl_center, Cyl_radius, partition);
+		}
+
+		//Merge different fluid boundary nodes with different directions into one
+		l.merge_into_fbn(using_flagella);
+
 
 	}
 
@@ -730,7 +740,7 @@ public: // ctor
 		assert(using_flagella);
 		unsigned int n_elements = flg->n;
 		flg->updx(); //Update all x values inside the flagella class
-		std::vector<float_type> Moments(n_elements);
+		std::vector<float_type> Moments/*(n_elements)*/;
 
 
 		for (unsigned int link_no = 0 ; link_no < n_elements ; ++link_no)
@@ -749,6 +759,7 @@ public: // ctor
 					double common =  ( l.get_node(xb,yb).f( inv_popl(D[i]) )    //population of a fluid node from same time step
 														+l.flagella_nodes[link_no][it].s_di_populations[i] );	//advected population from previous time step
 														//+l.get_node(xs,ys).f( D[i] ) );
+					std::cout << "Common Forces: "  << common << std::endl;
 					#pragma omp critical
 					{
 						Fx += velocity_set().c[0][D[i]] * common;
@@ -811,10 +822,14 @@ public: // ctor
 			for (auto it = l.flagella_nodes[l_no].begin() ; it!=l.flagella_nodes[l_no].end() ; ++it)
 			{
 				unsigned int i, j; i = it->coord.i; j = it->coord.j;
-				l.get_node(i,j).missing_populations.clear();
-				l.get_node(i,j).q_i.clear();
-				l.get_node(i,j).uvw_i.clear();
-				l.get_node(i,j).s_di_populations.clear();
+
+				assert( (l.get_node(i,j).missing_populations.size() == l.get_node(i,j).q_i.size()) and  ( l.get_node(i,j).q_i.size()== l.get_node(i,j).uvw_i.size() ) and ( l.get_node(i,j).q_i.size() ==  l.get_node(i,j).s_di_populations.size() ) );
+				if(l.get_node(i,j).missing_populations.size()!=0){
+					l.get_node(i,j).missing_populations.clear();
+					l.get_node(i,j).q_i.clear();
+					l.get_node(i,j).uvw_i.clear();
+					l.get_node(i,j).s_di_populations.clear();
+				}
 				l.get_node(i,j).unset_flag_property("Fluid_Boundary_Node");
 			}
 			l.flagella_nodes[l_no].clear();
@@ -835,14 +850,20 @@ public: // ctor
 			/*if ( !l.get_node(i,j).has_flag_property("Fluid_Boundary_Node") )
 				l.get_node(i,j).set_flag_property("Fluid_Boundary_Node");*/
 		}
+		std::cout << "changed the Nodes" << std::endl;
 
 		l.fluid_boundary_nodes.resize(l.cylinder_fbn.size());
 
 		float_type dt = 1.0;
+		std::cout << "Moments0:  " << Moments[0] << std::endl;
 		flg->step(Moments,dt);
+		flg->writeAlphas();
+
+		std::cout << "Stepped the flagella" << std::endl;
 		//adding the flagella nodes and corresponding fluid boundary nodes to the lattice
 		l.add_flagella_nodes(flg,Cyl_vel, Cyl_center, Cyl_radius,partition);
 		l.merge_into_fbn(using_flagella);
+
 	}
 
 	/** @brief Apply all Boundary Conditions */
@@ -860,19 +881,26 @@ public: // ctor
 	/** @brief LB step */
 	void step()
 	{
+		std::cout << "before advection" <<std::endl;
 		advect();
+		std::cout << "before wall bc" <<std::endl;
 		wall_bc();
+		std::cout << "before collision" <<std::endl;
 		collide();
 		//std::tie(Fx_,Fy_) = eval_F_cylinder();
 		//force << std::setw(10) << Fx_ << std::setw(10) << Fy_ << "\n";
 		if(flag_moving_cyl)
 			Adapt_Cyl();
 		if(using_flagella)
-			{
-				std::vector<float_type> Moments(flg->n);
-				Moments = eval_M_flagella();
-				Adapt_flagella(Moments);
-			}
+		{
+			std::cout << "before Calculation of Moments for flagella" <<std::endl;
+			std::vector<float_type> Moments(flg->n);
+			Moments = eval_M_flagella();
+			std::cout << "Before adaption of flagella" << std::endl;
+			Adapt_flagella(Moments);
+		}
+		std::cout << "step completed" << std::endl;
+
 
 		// file io
 		if ( file_output && ( ((time+1) % output_freq) == 0 || time == 0 ) )
