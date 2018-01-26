@@ -31,7 +31,6 @@ class flagella{
 	//Flagella
 	const std::vector<float_type> l, m, k_spring;
 	const std::vector<float_type> B;
-	const float_type x_0, y_0;
 	const float_type y_move;
 	const float_type omega;
 	std::vector<float_type> theta;
@@ -43,7 +42,7 @@ class flagella{
 	state_type alpha;
 	state_type dd_alpha;
 
-	float_type x, y;
+	float_type x_cyl, y_cyl;
 	float_type x_d, y_d;
 	float_type x_dd, y_dd;
 	std::vector<float_type> Q;
@@ -53,6 +52,7 @@ class flagella{
 
 public:
 	const int n;
+	const float_type x_0, y_0;
 	//Vector Constructor
 	flagella(int _n, std::vector<float_type> l_fla, std::vector<float_type> mass_fla, std::vector<float_type> k_fla, std::vector<float_type> B_fla, float_type x, float_type y, float_type _omega, float_type _ymove):
 		n(_n),
@@ -82,24 +82,25 @@ public:
 			for( int i= 0; i<n; ++i)
 				txt_a << std::setw(15) << "#alpha_" << std::to_string(i) << ": ";
 			txt_a <<std::endl;
+			updx();
 		}
 
 	//Uniform Constructor
 	flagella(int _n, float_type l_fla, float_type mass_fla, float_type k_fla, float_type B_fla, float_type x, float_type y, float_type _omega, float_type _ymove):
 		n(_n),
-		l(n,l_fla),
-		m(n,mass_fla),
-		k_spring(n,k_fla),
-		B(n,B_fla),
+		l(_n,l_fla),
+		m(_n,mass_fla),
+		k_spring(_n,k_fla),
+		B(_n,B_fla),
 		x_0(x),
 		y_0(y),
 		omega(_omega),
 		y_move(_ymove),
-		alpha (2*n,0),
-		dd_alpha(n,0),
+		alpha (2*_n,0),
+		dd_alpha(_n,0),
 		//dd_alpha_old(n,0),
-		Q (n,0),
-		x_vec(n,{0,0}),
+		Q (_n,0),
+		x_vec(_n,{0,0}),
 		flag_out(true),
 		t(0.0)
 		{
@@ -107,12 +108,14 @@ public:
 			x_dd = .0;
 			y_d = y_move*omega* cos(.0);
 			y_dd = .0;
-			for( int i = 0; i<n ; ++i){ theta.push_back(1/12*m[i]*l[i]*l[i]) ;}
-
+			for( int i = 0; i<n ; ++i){theta.push_back(1/12*m[i]*l[i]*l[i]) ;}
+		
 			txt_a.open("Alpha.txt",std::ios::out);
 			for( int i= 0; i<n; ++i)
 				txt_a << std::setw(15) << "#alpha_" << std::to_string(i) << ": ";
 			txt_a <<std::endl;
+			updx();
+			std::cout << "Xmin/max after init: " << xmin << "  " << xmax << "  Ymin/max: " << ymin << "  " <<ymax << std::endl;
 			}
 
 	void InitAngle(int i, float_type j){alpha[2*i]= j; if( i == 0) alpha_1_0 = j;}
@@ -132,11 +135,12 @@ public:
 	void getJacobi(const state_type &x, matrix_type &J, const double time);
 
 	void writeOut(boost::numeric::ublas::matrix<double> M);
-	coordinate<float_type> getX0(){coordinate<float_type> x0; x0.i = x; x0.j=y; return x0; }
+	coordinate<float_type> getX0(){coordinate<float_type> x_temp; x_temp.i = x_0; x_temp.j = y_0; return x_temp; }
 
 
 	float_type eval_M(int link_no, double Fx, double Fy, unsigned int xb, unsigned int yb);
-	std::pair<coordinate<int>, coordinate<int>> get_bbox();
+	//std::pair<coordinate<int>, coordinate<int>> get_bbox();
+	void get_bbox(coordinate<int>& min, coordinate<int>& max );
 
 	//Coordinates
 	void updx();
@@ -148,9 +152,9 @@ public:
 	float_type getY(int j){updx(); return x_vec[0][j];};
 	std::vector<float_type> getCoord(int i){updx(); return x_vec[i];}
 	float_type sumMass(int first, int last);
-	std::pair<std::vector<double>,bool> check_intersection (const unsigned int&,
+	bool check_intersection (const unsigned int&,
 																													const unsigned int&,
-																													const unsigned int&);
+																													const unsigned int&,std::vector<double>&);
 };
 
 std::pair<double,double> line(const double& x0, const double& y0,
@@ -161,20 +165,21 @@ std::pair<double,double> line(const double& x0, const double& y0,
 		return std::make_pair(m,c);
 	}
 
-std::pair<std::pair<double,double>,bool> intersection(const double& i0, const double& j0,  //i,j denote lattice points
+	bool intersection(const double& i0, const double& j0,  //i,j denote lattice points
 																											const double& i1, const double& j1,
 																											const double& x0, const double& y0,  //x,y denote link points
-																											const double& x1, const double& y1)
+																											const double& x1, const double& y1, 
+																											double& x_in, double& y_in)
 	{
 		std::pair<double,double> line1,line2;
 		line1 = line(i0,j0,i1,j1); line2 = line(x0,y0,x1,y1);
 		bool is_intersecting = false;
-		double x_in = 0 ,y_in = 0;
+		//double x_in = 0 ,y_in = 0;
 		double m1,c1,m2,c2;
 		m1 = line1.first; c1 = line1.second; m2 = line2.first; c2 = line2.second;
 		if (fabs(m1-m2) < 1e-3) //if slopes are close
 		{
-			return std::make_pair(std::make_pair(x_in,y_in),is_intersecting);
+			x_in = 0; y_in = 0; return is_intersecting;
 		}
 		else
 		{
@@ -186,23 +191,23 @@ std::pair<std::pair<double,double>,bool> intersection(const double& i0, const do
 				x_in = (c2-c1)/(m1-m2);  //the intersection points in cartesian coordinate system
 				y_in = m1*x_in + c1;
 				is_intersecting = true;
-				return std::make_pair(std::make_pair(x_in,y_in),is_intersecting);
+				return is_intersecting;
 			}
 			else
-				return std::make_pair(std::make_pair(x_in,y_in),is_intersecting);
+				return is_intersecting;
 		}
 	}
 
-std::pair<std::vector<double>,bool> flagella::check_intersection (const unsigned int& i0,
+bool flagella::check_intersection (const unsigned int& i0,
 																												const unsigned int& j0,
-																												const unsigned int& dir)
+																												const unsigned int& dir,std::vector<double>& l_q_uw_vw)
 	{
 
 		double x0, y0, x1,y1;/*
 		std::vector<double> q(n,1);*/ std::vector<std::pair<double,double>> intersection_pts(n,std::make_pair(0.,0.) );
 		bool is_intersecting = false;
 		unsigned int i1,j1; i1 = i0 + velocity_set().c[0][dir]; j1 = j0 + velocity_set().c[1][dir];
-		int L = -1; double uw=0,vw=0,q = 1.1;
+		int L = -1; double uw=0,vw=0,q = 1.5;
 		//checking intersection with all the links
 		for (unsigned int l = 0 ; l<n ; ++l)
 		{
@@ -216,12 +221,13 @@ std::pair<std::vector<double>,bool> flagella::check_intersection (const unsigned
 			}
 
 			std::pair<double,double> intersection_pt; bool is_intersecting_l;
-			std::tie(intersection_pt,is_intersecting_l) = intersection( i0,j0,
+			is_intersecting_l = intersection( i0,j0,
 																																i1,j1,
 																																x0,y0,
-																																x1,y1);
+																																x1,y1, intersection_pt.first, intersection_pt.second);
 			if(is_intersecting_l)
 			{
+				std::cout << l << std::endl;
 				is_intersecting = true;
 				double qtemp = std::sqrt( std::pow((i0-intersection_pt.first),2) +
 																	std::pow((j0-intersection_pt.second),2) );
@@ -238,9 +244,9 @@ std::pair<std::vector<double>,bool> flagella::check_intersection (const unsigned
 				//break;
 			}
 		}
-		std::vector<double> l_q_uw_vw;
+		//std::vector<double> l_q_uw_vw;
 		l_q_uw_vw.push_back(L); l_q_uw_vw.push_back(q); l_q_uw_vw.push_back(uw); l_q_uw_vw.push_back(vw);
-		return std::make_pair(l_q_uw_vw,is_intersecting);
+		return is_intersecting;
 	}
 
 void flagella::getRHS1D(const state_type &x, state_type &dxdt, const double time){
@@ -555,8 +561,7 @@ float_type flagella::eval_M(int link_no, double Fx, double Fy, unsigned int xb, 
 	return moment;
 }
 
-std::pair<coordinate<int>, coordinate<int>> flagella::get_bbox(){
-	coordinate<int> min,max;
+void flagella::get_bbox(coordinate<int> & min, coordinate<int>& max ){
 	int safety = 2;
 
 	min.i = (int) xmin - safety;
@@ -564,20 +569,25 @@ std::pair<coordinate<int>, coordinate<int>> flagella::get_bbox(){
 	max.i = (int) xmax + safety;
 	max.j = (int) ymax + safety;
 
-	return std::make_pair(min, max);
+	std::cout << "Xmin/max bbox: " << xmin << "  " << xmax << "  Ymin/max: " << ymin << "  " <<ymax << std::endl;
+	std::cout << "Xmin/max Coordinate: " << min.i << "  " << max.i << "  Ymin/max: " << min.j << "  " << max.j << std::endl;
 }
 
 //Update Coordinates
 void flagella::updx(){
 
-	x_vec[0][0] = x_0 + l[0] * cos(alpha[0]);
-	x_vec[0][1] = y_0 + l[0] * sin(alpha[0]);
-	xmin = x_vec[0][0]; xmax = x_vec[0][0];
-	ymin = x_vec[0][1]; ymax = x_vec[0][1];
+	xmin = x_0; xmax = x_0;
+	ymin = y_0; ymax = y_0;
 
-	for( int i = 1; i < n; ++i){
-		x_vec[i][0] = x_vec[i-1][0] + l[i] * cos(alpha[i]);
-		x_vec[i][1] = x_vec[i-1][1] + l[i] * sin(alpha[i]);
+	for( int i = 0; i < n; ++i){
+		if(i==0){
+			x_vec[0][0] = x_0 + l[0] * cos(alpha[0]);
+			x_vec[0][1] = y_0 + l[0] * sin(alpha[0]);
+		}
+		else{
+			x_vec[i][0] = x_vec[i-1][0] + l[i] * cos(alpha[i]);
+			x_vec[i][1] = x_vec[i-1][1] + l[i] * sin(alpha[i]);
+		}
 		if(xmin > x_vec[i][0])
 			xmin = x_vec[i][0];
 		else if(xmax < x_vec[i][0])
@@ -607,8 +617,8 @@ float_type flagella::sumMass(int first, int last){
 
 //Updates the velocity of the attached part to the cylinder
 void flagella::updateX0(int time){
-	y = y_0 + y_move* sin(omega*time);
-	x = x_0;
+	y_cyl = y_0 + y_move* sin(omega*time);
+	x_cyl = x_0;
 	y_d = y_move*omega* cos(omega*time);
 	y_dd = -y_move*omega*omega* sin(omega*time);
 }

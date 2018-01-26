@@ -18,7 +18,6 @@
 
 namespace lb {
 
-//class simulation;
 class lattice; // forward declaration
 
 /**
@@ -331,7 +330,8 @@ public: // walls
 	 */
 	void add_wall(coordinate<int> min_coord, coordinate<int> max_coord);
 
-	void add_wallCylinder(float_type center[2], float_type Cyl_vel[2], float_type radius,bool using_flagella, unsigned int partition, const simulation& sim);
+	void add_wallCylinder(float_type center[2], float_type Cyl_vel[2], float_type radius, bool using_flagella, unsigned int partition);
+		/**  @brief calculate smaller root of quadratic function */
 
 	/** @brief Delete all existing walls */
 	void delete_walls();
@@ -343,13 +343,18 @@ public: // walls
 	void delete_fluid_boundary_nodes();
 
 	/** @brief Add fluid boundary nodes related to flagella*/
-	void add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, unsigned int partition, /*const lb::*/const simulation& sim);
+	void add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float_type Cyl_center[2], float_type R, unsigned int partition);
 
 	/** @brief Merge different types of fluid boundary nodes into fluid_boundary_nodes vector and setting the flag properties*/
 	void merge_into_fbn(const bool&);
 
 	/** @brief Merging helper function */
 	void merging_helper(/*const unsigned int&,*/ const std::vector<node>::iterator&);
+
+private:
+	inline float_type solve_quadratic(float_type a, float_type b, float_type c){ return -b/2/a - sqrt(b*b-4*a*c)/2/a;} ;
+
+	float_type get_qi(const node& n,const int& i, float_type Cyl_center[2], float_type Cyl_radius );
 
 
 public: // file dump
@@ -446,10 +451,11 @@ const T& node::get_data_property(std::string name) const { return l->properties.
 *		@Adds to the missing_populations vector (only for the Fluid Boundary Nodes)
 */
 void node::add_missing_populations(const int& i) {
-	if (has_flag_property("Fluid_Boundary_Node"))
+	/*if (has_flag_property("Fluid_Boundary_Node"))*/
 		missing_populations.push_back(i);
-	else
+	/*else
 		std::cout << "No Missing Populations! Not a fluid boundary node!" << std::endl;
+*/
 }
 /**
 *		@Additionaly implemented function
@@ -543,6 +549,32 @@ std::ostream& operator<<(std::ostream& os, const lattice& l)
 	return os;
 }
 
+float_type lattice::get_qi(const node& n,const int& i, float_type Cyl_center[2], float_type Cyl_radius ) /*const*/{
+		double x1 = (double)n.coord.i; double y1 = (double)n.coord.j;
+		double x2 =  x1 + (double)velocity_set().c[0][i]; double y2 =  y1 + (double)velocity_set().c[1][i];
+		assert(get_node((int)x2,(int)y2).has_flag_property("solid"));
+		//calc distance c_i
+		float_type dx = x2-x1;
+		float_type dy = y2-y1;
+
+		float_type c_i = sqrt((dx)*(dx)+(dy)*(dy));
+
+		//std::cout << "dx " << dx << " dy " << dy << " c_i " << c_i << std::endl;
+
+		//calc x_w,i
+		//find root of quadratic equation
+		//((x1+t*dx -l.center[0])*(x1+t*dx -l.center[0]) + (y1+t*dy -l.center[1])*(y1+t*dy -l.center[1])-l.radius*l.radius == 0)
+		float_type a = (dx*dx + dy*dy);
+		float_type b = 2*dx* (x1-Cyl_center[0]) + 2*dy * (y1 - Cyl_center[1]);
+		float_type c = (x1-Cyl_center[0])*(x1-Cyl_center[0]) + (y1-Cyl_center[1])*(y1-Cyl_center[1]) - Cyl_radius*Cyl_radius;
+		float_type t = solve_quadratic(a,b,c);
+		float_type q_i = sqrt(t*dx *t*dx + t*dy *t*dy)/c_i;
+		//std::cout << "Q_i: " << q_i << std::endl;
+
+		return q_i;
+
+	}
+
 void lattice::add_wall(coordinate<int> min_coord, coordinate<int> max_coord)
 {
 	for (int j=min_coord.j; j<=max_coord.j; ++j)
@@ -560,7 +592,7 @@ void lattice::add_wall(coordinate<int> min_coord, coordinate<int> max_coord)
 	}
 }
 
-void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], float_type radius,bool using_flagella, unsigned int partition, const simulation& sim)//function to mark the solid nodes (In and on the cylinder) & Fluid Boundary Nodes(some of whose populations come from solid)
+void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], float_type radius, bool using_flagella, unsigned int partition)//function to mark the solid nodes (In and on the cylinder) & Fluid Boundary Nodes(some of whose populations come from solid)
 { //ensure the partition here if flagella is used
 	std::vector<node> not_solid;
 	int x1 = floor(center[0] - radius)-1;  int y1 = floor(center[1] - radius)-1;
@@ -599,7 +631,8 @@ void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], floa
 		{
 			if ( get_node(x + velocity_set().c[0][i] ,y + velocity_set().c[1][i] ).has_flag_property("solid") ) // if the adjacent node (according to Ci is a solid node)
 			{
-				double q = sim.get_qi(*it,i);
+				//double q = sim.get_qi(*it,i);
+				double q = get_qi(*it, i, center, radius );
 				double uw = Cyl_vel[0], vw = Cyl_vel[1];
 				if ( !cylinder_fbn.empty() )
 				{
@@ -624,14 +657,15 @@ void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], floa
 	not_solid.clear();
 }
 
-void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, unsigned int partition, const simulation & sim)
+void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float_type Cyl_center[2], float_type R, unsigned int partition)
 {
 	coordinate<float_type> P0 = flg->getX0();
 	unsigned int x = fabs(P0.i - partition);
 	const unsigned int n_links = flg->n; //n_links is the number of links in flagella
 	flagella_nodes.resize(n_links);
 	coordinate<int> min,max;
-	std::make_pair(min,max) = flg->get_bbox();   //bounding box of the flagella
+	//std::make_pair(min,max) = flg->get_bbox();   //bounding box of the flagella
+	flg->get_bbox(min, max);
 	assert(partition < min.i);
 	min.i = partition;  													//assumed that the flagella is on right of the cylinder
 	unsigned int y =
@@ -649,17 +683,25 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, 
 		{
 			if ( !get_node(i,j).has_flag_property("solid") )
 			{
+				std::cout << i << "  "<< j<< std::endl;
 				for (unsigned int dir = 0 ; dir<velocity_set().size ; ++dir)
 				{
 					//check intersection with flagella first
 					std::vector<double> l_q_uw_vw; bool intersect_with_flagella;
-					std::tie(l_q_uw_vw,intersect_with_flagella) = flg->check_intersection(i,j,dir);
+					intersect_with_flagella = flg->check_intersection(i,j,dir, l_q_uw_vw);
 					if ( intersect_with_flagella )
 					{
+						std::cout << "Flagella  //" << "Size of l_q_uw_vw" << l_q_uw_vw.size() << " " << flagella_nodes.size() << std::endl;
 						unsigned int link_no = (unsigned int) l_q_uw_vw[0];
-						double q=l_q_uw_vw[1],uw=l_q_uw_vw[2],vw=l_q_uw_vw[3];
+						double q;
+						if(dir < 5) {q=l_q_uw_vw[1];}
+						else {q=l_q_uw_vw[1]/sqrt(2);}
+						assert(q<=1.);
+						double uw=l_q_uw_vw[2],vw= l_q_uw_vw[3];
+						std::cout << l_q_uw_vw[0] << " " << l_q_uw_vw[1] << " " << l_q_uw_vw[2] << " " << " " << l_q_uw_vw[3] << " "  <<std::endl;;
 						if ( !flagella_nodes[link_no].empty() )
 						{
+							std::cout << "IF reached" ;
 							if ( get_node(i,j).index != flagella_nodes[link_no].back().index )
 								flagella_nodes[link_no].push_back(get_node(i,j));
 							flagella_nodes[link_no].back().add_missing_populations(dir);
@@ -669,6 +711,7 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, 
 						}
 						else
 						{
+							std::cout << "Else reached" ;
 							flagella_nodes[link_no].push_back(get_node(i,j));
 							flagella_nodes[link_no].back().add_missing_populations(dir);
 							flagella_nodes[link_no].back().q_i.push_back(q);
@@ -678,9 +721,12 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, 
 					}
 					else
 					{
+
 						if ( get_node(i + velocity_set().c[0][dir] ,j + velocity_set().c[1][dir] ).has_flag_property("solid") ) // if the adjacent node (according to Ci is a solid/cylinder node)
 						{
-							double q = sim.get_qi(get_node(i,j),dir);
+							std::cout << "cylinder fbn" << std::endl;
+							double q = get_qi(get_node(i,j),dir, Cyl_center, R);
+							//double q = sim.get_qi(get_node(i,j),dir);
 							double uw = Cyl_vel[0], vw = Cyl_vel[1];
 							if ( !cylinder_fbn_f.empty() )
 							{
@@ -706,6 +752,7 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, 
 			}
 		}
 	}
+	std::cout << "add_flagella_nodes end reached" << std::endl;
 
 }
 
