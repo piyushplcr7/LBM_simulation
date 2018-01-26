@@ -196,7 +196,7 @@ public: // ctor
 	}
 
 	/**  @brief calculate fraction of fluid from node n to the solid boundary along the direction i */
-	float_type get_qi(const node& n,const int& i){
+	static float_type get_qi(const node& n,const int& i){
 		double x1 = (double)n.coord.i; double y1 = (double)n.coord.j;
 		double x2 =  x1 + (double)velocity_set().c[0][i]; double y2 =  y1 + (double)velocity_set().c[1][i];
 		assert(l.get_node((int)x2,(int)y2).has_flag_property("solid"));

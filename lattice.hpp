@@ -598,7 +598,7 @@ void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], floa
 		{
 			if ( get_node(x + velocity_set().c[0][i] ,y + velocity_set().c[1][i] ).has_flag_property("solid") ) // if the adjacent node (according to Ci is a solid node)
 			{
-				double q = get_qi(*it,i);
+				double q = simulation::get_qi(*it,i);
 				double uw = Cyl_vel[0], vw = Cyl_vel[1];
 				if ( !cylinder_fbn.empty() )
 				{
@@ -678,7 +678,7 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float R, 
 					{
 						if ( get_node(i + velocity_set().c[0][dir] ,j + velocity_set().c[1][dir] ).has_flag_property("solid") ) // if the adjacent node (according to Ci is a solid/cylinder node)
 						{
-							double q = get_qi(get_node(i,j),dir);
+							double q = simulation::get_qi(get_node(i,j),dir);
 							double uw = Cyl_vel[0], vw = Cyl_vel[1];
 							if ( !cylinder_fbn_f.empty() )
 							{
