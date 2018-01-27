@@ -92,7 +92,7 @@ public: // ctor
 			coordinate<float> attach_point = {Cyl_center[0]+Cyl_radius,Cyl_center[1]};
 			std::cout << "Attachment Point: " << attach_point.i << "   " << attach_point.j << std::endl;
 			std::cout << "Partition Value: " << partition << std::endl;
-			double length = 20, mass = 200, K=10, c=0.1;
+			double length = 20, mass = 200, K=100, c=100;
 			flg = new flagella(n_links, length, mass, K, c, attach_point.i, attach_point.j, 0, 0);
 			std::cout << "Flagella created" << std::endl;
 			//adding the flagella nodes and corresponding fluid boundary nodes to the lattice
@@ -107,9 +107,9 @@ public: // ctor
 
 		//Init B.C.
 		u_inlet = 0.05;
-		runUptime = 200;
+		runUptime = 0;
 		rho_inlet = 1;
-		bool flag_Complete_Init = !true;
+		bool flag_Complete_Init = true;
 		//const float_type pi(std::acos(-1.0));
 
 		//#pragma omp parallel for
@@ -309,7 +309,7 @@ public: // ctor
 	void curved_wall_bc()
 	{
 		//Curved Wall
-		//#pragma omp parallel for schedule(dynamic)
+		#pragma omp parallel for schedule(dynamic)
 		for (unsigned int i=0; i<l.fluid_boundary_nodes.size(); ++i)
 		{
 			unsigned int x_i = l.fluid_boundary_nodes[i].coord.i;

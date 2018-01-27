@@ -12,12 +12,12 @@ int main(int argc, char *argv[])
 {
 	//omp_set_num_threads(std::max(omp_get_max_threads(),omp_get_num_procs()));
 	//omp_set_num_threads(1);
-	unsigned int nx = 400, ny = 400, Time = 1;
+	unsigned int nx = 400, ny = 400, Time = 3000;
 	float Vmax = 0.05, Re = 100;
 	lb::simulation* sim = new lb::simulation(nx,ny,Re,Vmax);
 	sim->initialize();
 	std::cout << *sim << std::endl;
-	std::cout <<"Reynoldnumber: " << Re;
+	std::cout <<"Reynoldnumber: " << Re << std::endl;
 	//sim->resume("Populations.txt");
 
 	#ifdef USE_OPENGL_VISUALIZATION
