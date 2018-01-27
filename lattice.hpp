@@ -696,7 +696,8 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float_typ
 						double q;
 						if(dir < 5) {q=l_q_uw_vw[1];}
 						else {q=l_q_uw_vw[1]/sqrt(2);}
-						assert(q<=1.);
+						//std::cout << " Q : " << q << std::endl;
+						assert(q<=1.1);
 						double uw=l_q_uw_vw[2],vw= l_q_uw_vw[3];
 						//std::cout << l_q_uw_vw[0] << " " << l_q_uw_vw[1] << " " << l_q_uw_vw[2] << " " << " " << l_q_uw_vw[3] << " "  <<std::endl;;
 						if ( !flagella_nodes[link_no].empty() )

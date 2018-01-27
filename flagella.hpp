@@ -558,7 +558,7 @@ float_type flagella::eval_M(int link_no, double Fx, double Fy, unsigned int xb, 
 	dy = y2-y1;
 	t = ( (dx)*(xb-x1)+(dy)*(yb-y1) )/( dx*dx + dy*dy); //find t of line equation for shortest distance
 	moment = (xb-x1)*t*Fy -(yb-y1)*t*Fx; //calculate moment from forces on the link*/
-	std::cout << x1 << "  " << y1 << "  " << xb << "  " << yb <<  "  " << Fx << "  " << Fy << std::endl;
+	//std::cout << x1 << "  " << y1 << "  " << xb << "  " << yb <<  "  " << Fx << "  " << Fy << std::endl;
 	moment = (xb-x1)*Fy - (yb-y1)*Fx;
 	return moment;
 }
