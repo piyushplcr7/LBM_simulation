@@ -15,6 +15,7 @@
 #include <vector>
 #include <fstream>
 #include<cassert>
+#include<limits>
 
 namespace lb {
 
@@ -570,7 +571,8 @@ float_type lattice::get_qi(const node& n,const int& i, float_type Cyl_center[2],
 		float_type t = solve_quadratic(a,b,c);
 		float_type q_i = sqrt(t*dx *t*dx + t*dy *t*dy)/c_i;
 		//std::cout << "Q_i: " << q_i << std::endl;
-
+		if(q_i==1)
+			q_i -= std::numeric_limits<float_type>::epsilon();
 		return q_i;
 
 	}
@@ -694,10 +696,14 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float_typ
 						//std::cout << "Flagella  //" << "Size of l_q_uw_vw" << l_q_uw_vw.size() << " " << flagella_nodes.size() << std::endl;
 						unsigned int link_no = (unsigned int) l_q_uw_vw[0];
 						double q;
-						if(dir < 5) {q=l_q_uw_vw[1];}
+						if(dir < 5) {
+							q=l_q_uw_vw[1];}
 						else {q=l_q_uw_vw[1]/sqrt(2);}
-						//std::cout << " Q : " << q << std::endl;
-						assert(q<=1.1);
+						if(fabs(q -1) < 1e-5)
+							q = 1 - std::numeric_limits<float_type>::epsilon();
+						//std::cout << std::setprecision(std::numeric_limits<double>::digits10 + 1) << " Q : " << q << std::endl;
+
+						assert(q<=1);
 						double uw=l_q_uw_vw[2],vw= l_q_uw_vw[3];
 						//std::cout << l_q_uw_vw[0] << " " << l_q_uw_vw[1] << " " << l_q_uw_vw[2] << " " << " " << l_q_uw_vw[3] << " "  <<std::endl;;
 						if ( !flagella_nodes[link_no].empty() )

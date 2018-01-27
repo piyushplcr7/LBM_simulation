@@ -73,9 +73,9 @@ public: // ctor
 		Cyl_center[1] = Cyl_center_0[1];
 		Cyl_vel[0] = 0.0;
 		Cyl_vel[1] = 0.0;
-		unsigned int n_links = 1;
+		unsigned int n_links = 2;
 
-		partition = Cyl_center_0[0] + Cyl_radius - 10 ;
+		partition = Cyl_center_0[0] + Cyl_radius - 20 ;
 
 		if (!using_flagella)
 			partition = l.nx;
@@ -270,8 +270,32 @@ public: // ctor
 		}
 
 		if( !(q_i[4] == 0) and !(q_i[2] == 0) ){
-			du_y = (l.get_node(i+1,j).u()-l.get_node(i-1,j).u())/(q_i[4] + q_i[2]);
+			du_y = (l.get_node(i,j+1).u()-l.get_node(i,j-1).u())/(q_i[4] + q_i[2]);
 			dv_y = (l.get_node(i,j+1).v()-l.get_node(i,j-1).v())/(q_i[4] + q_i[2]);
+		}
+		double rho = l.get_node(i,j).rho(); double cs = velocity_set().cs;
+		//Set non equilibrium pressure tensor
+		Pneq[0][0] = - rho*cs*cs/beta*(du_x);
+		Pneq[1][0] = -rho*cs*cs/beta/2*(du_y + dv_x);
+		Pneq[0][1] = Pneq[1][0];
+		Pneq[1][1] = - rho*cs*cs/beta*(dv_y);
+	}
+
+	/**  @brief Calculate NonEq for with direct influence of Boundary */
+	void calc_Pneq(int i, int j, const std::vector<std::pair<double,double>>& uv, float_type q_i[9], float_type (&Pneq)[2][2]){
+
+		float_type du_x =0, du_y=0, dv_x =0, dv_y = 0;
+		//calculate velocity gradients
+		if(1 or !(q_i[3]==0) and !(q_i[1] == 0) )
+		{
+			du_x = (uv[1].first - uv[3].first)/(q_i[3] + q_i[1]);
+			dv_x = (uv[1].second - uv[3].second)/(q_i[3] + q_i[1]);
+		}
+
+		if(1 or !(q_i[4] == 0) and !(q_i[2] == 0) )
+		{
+			du_y = (uv[2].first - uv[4].first)/(q_i[2] + q_i[4]);
+			dv_y = (uv[2].second - uv[4].second)/(q_i[2] + q_i[4]);
 		}
 		double rho = l.get_node(i,j).rho(); double cs = velocity_set().cs;
 		//Set non equilibrium pressure tensor
@@ -309,12 +333,14 @@ public: // ctor
 	void curved_wall_bc()
 	{
 		//Curved Wall
-		#pragma omp parallel for schedule(dynamic)
+		//#pragma omp parallel for schedule(dynamic)
 		for (unsigned int i=0; i<l.fluid_boundary_nodes.size(); ++i)
 		{
 			unsigned int x_i = l.fluid_boundary_nodes[i].coord.i;
 			unsigned int y_j = l.fluid_boundary_nodes[i].coord.j;
 			//std::cout << "Applying curved BC for "<<x_i << " " << y_j << std::endl;
+			//std::cout << "(x_i,y_j) = (" << x_i<< " " << y_j << ") "  << std::endl;
+			//std::cout << "l.get_node(x_i,y_j) = " << l.get_node(x_i,y_j).u() << "  "  << std::endl;//<< l.get_node(x_i,y_j).missing_populations.size() << std::endl;
 			std::vector<int> i_d(l.get_node(x_i,y_j).return_missing_populations()); //contains the direction in which solid is encountered
 			std::vector<float_type> q = l.get_node(x_i,y_j).q_i;												//contains the corresponding q values
 			std::vector<std::pair<double,double> > uvw = l.get_node(x_i,y_j).uvw_i;	//contains the corresponding wall velocities
@@ -328,6 +354,7 @@ public: // ctor
 			{
 				q_i[i_d[j]] = q[j];
 			}
+			std::vector<float_type> u_P(8);
 
 			for (unsigned int j = 0; j < i_d.size(); ++j)
 			{
@@ -355,6 +382,7 @@ public: // ctor
 					//float_type u_fi[2] = {l.get_node(x_i+c_x,y_j+c_y).u(), l.get_node(x_i+c_x,y_j+c_y).v()};
 				//std::cout << "q_i["<<i_d[j]<<"] = " << q_i[i_d[j]] << " Out of " << i_d.size() << " & u_fi = {" << u_fi[0] << "," << u_fi[1] << "}" ;
 				//wall velocity
+
 				float_type u_w_i,v_w_i;
 				std::tie(u_w_i,v_w_i) = uvw[j];
 				//calc utgt part
@@ -378,6 +406,25 @@ public: // ctor
 				rho_bb += l.get_node(x_i, y_j).f(j);
 			}
 
+			//
+			std::vector<std::pair<double,double>> uv(1);
+			for (unsigned int i=1 ; i<5 ; ++i)
+			{
+				if (q_i[i]<1)
+					{
+						auto found = std::find(std::begin(i_d),std::end(i_d),i);
+						unsigned int req_ind = std::distance(i_d.begin(),found);
+						uv.push_back(uvw[req_ind]);
+					}
+				else
+					{
+						double tempu = l.get_node(x_i+velocity_set().c[0][i] , y_j+velocity_set().c[1][i]).u();
+						double tempv = l.get_node(x_i+velocity_set().c[0][i] , y_j+velocity_set().c[1][i]).v();
+						uv.push_back(std::make_pair(tempu,tempv));
+					}
+			}
+
+
 			//rho_tgt
 			float_type rho_tgt = rho_bb + rho_s;
 
@@ -388,7 +435,7 @@ public: // ctor
 			float_type Peq[2][2];
 			calc_Peq(x_i, y_j, Peq);
 			float_type Pneq[2][2];
-			calc_Pneq(x_i, y_j, q_i, Pneq);
+			calc_Pneq(x_i, y_j ,uv, q_i, Pneq);
 			float_type f_new;
 
 			//std::cout << "Peq: " << Peq[0][0] << " /" << Peq[0][1] << " /" << Peq[1][0] << " /" << Peq[1][1] << " /" << std::endl;
@@ -721,20 +768,21 @@ public: // ctor
 	}
 
 	/** @brief Calculate force on the solid object in the flow */
-	std::pair<double,double> eval_F_cylinder () const {
+
+	std::pair<double,double> eval_F_general (const std::vector<node>& boundary_nodes) const {
 		double Fx=0.,Fy=0.;
 		#pragma omp parallel for schedule(dynamic)
-		for (unsigned int it=0; it<l.fluid_boundary_nodes.size(); ++it) //summing for all fluid_boundary_nodes
+		for (unsigned int it=0; it<boundary_nodes.size(); ++it) //summing for all fluid_boundary_nodes
 		{
-			unsigned int xb = l.fluid_boundary_nodes[it].coord.i; //coordinates of fluid boundary node
-			unsigned int yb = l.fluid_boundary_nodes[it].coord.j;
-			std::vector<int> D(l.get_node(xb,yb).return_missing_populations()); //vector of intersecting populations, inverse of D-bar
+			unsigned int xb = boundary_nodes[it].coord.i; //coordinates of fluid boundary node
+			unsigned int yb = boundary_nodes[it].coord.j;
+			std::vector<int> D(boundary_nodes[it].return_missing_populations()); //vector of intersecting populations, inverse of D-bar
 			for (unsigned int i = 0; i < D.size(); ++i)
 			{
-				unsigned int xs = xb + velocity_set().c[0][D[i]]; //coordinates of solid node
-				unsigned int ys = yb + velocity_set().c[1][D[i]];
+				//unsigned int xs = xb + velocity_set().c[0][D[i]]; //coordinates of solid node
+				//unsigned int ys = yb + velocity_set().c[1][D[i]];
 				double common =  (l.get_node(xb,yb).f( inv_popl(D[i]) )
-													+l.get_node(xs,ys).f( D[i] ) );
+													+boundary_nodes[it].s_di_populations[i] );
 				#pragma omp critical
 				{
 					Fx += velocity_set().c[0][D[i]] * common;
@@ -901,7 +949,7 @@ public: // ctor
 		wall_bc();
 		std::cout << "before collision" <<std::endl;
 		collide();
-		//std::tie(Fx_,Fy_) = eval_F_cylinder();
+		std::tie(Fx_,Fy_) = eval_F_general(l.fluid_boundary_nodes);
 		//force << std::setw(10) << Fx_ << std::setw(10) << Fy_ << "\n";
 		if(flag_moving_cyl)
 			Adapt_Cyl();

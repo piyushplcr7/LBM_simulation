@@ -9,11 +9,11 @@ t = np.arange(len(a1))
 
 #plt.subplot(311)
 line1,= plt.plot(t,a1, label = "Alpha1" ,linestyle = '-.') 
-#line2, = plt.plot(t, a2, label="Alpha2",  linestyle = '-')
+line2, = plt.plot(t, a2, label="Alpha2",  linestyle = '-')
 plt.ylabel('Alpha')
 plt.xlabel('Time')
 
-plt.legend(handles=[line1], loc =1)
+plt.legend(handles=[line1, line2], loc =1)
 
 #plt.subplot(312)
 #plt.plot(t,a2, '-')
