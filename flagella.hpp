@@ -572,7 +572,7 @@ void flagella::get_bbox(coordinate<int> & min, coordinate<int>& max ){
 	max.j = (int) ymax + safety;
 
 	std::cout << "Xmin/max bbox: " << xmin << "  " << xmax << "  Ymin/max: " << ymin << "  " <<ymax << std::endl;
-	std::cout << "Xmin/max Coordinate: " << min.i << "  " << max.i << "  Ymin/max: " << min.j << "  " << max.j << std::endl;
+	//std::cout << "Xmin/max Coordinate: " << min.i << "  " << max.i << "  Ymin/max: " << min.j << "  " << max.j << std::endl;
 }
 
 //Update Coordinates

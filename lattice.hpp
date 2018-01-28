@@ -189,7 +189,7 @@ public: // query and access properties
 	*/
 	std::vector<int> return_missing_populations() const;
 	/**
-	*		@Additionaly implemented function
+	*		@Additionaly implemented functiondd
 	*		@Clears the missing_populations vector
 	*/
 	void clear_missing_populations();
@@ -759,7 +759,7 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float_typ
 			}
 		}
 	}
-	std::cout << "add_flagella_nodes end reached" << std::endl;
+	//std::cout << "add_flagella_nodes end reached" << std::endl;
 	std::cout << "number of variable cylinder boundary nodes: " << cylinder_fbn_f.size() << std::endl;
 	std::cout << "number of First link boundary nodes: " << flagella_nodes[0].size() << std::endl;
 
