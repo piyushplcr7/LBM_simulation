@@ -51,7 +51,7 @@ public: // ctor
 	  output_index(0),
 		flag_moving_cyl(!true),
 		using_entropic(!true),
-		using_flagella(!true)
+		using_flagella(true)
 	{
 		// define amount to shift populations for advection (according to the array model of domain)
 		for (unsigned int i=0; i<velocity_set().size; ++i)
@@ -75,7 +75,7 @@ public: // ctor
 		Cyl_vel[1] = 0.0;
 		unsigned int n_links = 1;
 
-		partition = Cyl_center_0[0] + Cyl_radius - 20 ;
+		partition = Cyl_center_0[0] + Cyl_radius - 15 ;
 
 		if (!using_flagella)
 			partition = l.nx;
@@ -777,6 +777,9 @@ public: // ctor
 		{
 			unsigned int xb = boundary_nodes[it].coord.i; //coordinates of fluid boundary node
 			unsigned int yb = boundary_nodes[it].coord.j;
+			if(xb == 200){
+				std::cout << "x = 200/ y =" << yb << " /// " << boundary_nodes.size() <<std::endl;
+			}
 			std::vector<int> D(boundary_nodes[it].return_missing_populations()); //vector of intersecting populations, inverse of D-bar
 			for (unsigned int i = 0; i < D.size(); ++i)
 			{
@@ -802,12 +805,17 @@ public: // ctor
 		{
 			unsigned int xb = boundary_nodes[it].coord.i; //coordinates of fluid boundary node
 			unsigned int yb = boundary_nodes[it].coord.j;
+			if(xb == 200){
+				std::cout << "x = 200/ y =" << yb << " /// " << boundary_nodes.size() <<std::endl;
+			}
 			std::vector<int> D(boundary_nodes[it].return_missing_populations()); //vector of intersecting populations, inverse of D-bar
+			//std::vector<int> D(l.get_node(xb,yb).return_missing_populations());
 			for (unsigned int i = 0; i < D.size(); ++i)
 			{
 				//unsigned int xs = xb + velocity_set().c[0][D[i]]; //coordinates of solid node
 				//unsigned int ys = yb + velocity_set().c[1][D[i]];
 				double common =  (l.get_node(xb,yb).f( inv_popl(D[i]) )
+									//+l.get_node(xb,yb).s_di_populations[i] );
 													+boundary_nodes[it].s_di_populations[i] );
 				#pragma omp critical
 				{
@@ -918,11 +926,19 @@ public: // ctor
 			l.flagella_nodes.clear();
 		}
 
+
 		//probably the next loop is not required because cylinder_fbn is exclusive ie does not intersect with anyone else
 		//only updation of the s_di_populations is necessary
 		for (auto it = l.cylinder_fbn.begin() ; it!=l.cylinder_fbn.end() ; ++it)
 		{
-			unsigned int i, j, reset_size; i = it->coord.i; j = it->coord.j; reset_size = it->missing_populations.size();
+			unsigned int i, j, reset_size; 
+			i = it->coord.i; 
+			j = it->coord.j; 
+			reset_size = it->missing_populations.size();
+			unsigned int global_size = l.get_node(i,j).missing_populations.size();
+			if(global_size != reset_size){
+				std::cout << "Size difference in the: " << i << ", " << j << " // reset:" <<reset_size << " global: " << global_size << std::endl; 
+			}
 			l.get_node(i,j).missing_populations.resize(reset_size);
 			l.get_node(i,j).q_i.resize(reset_size);
 			l.get_node(i,j).uvw_i.resize(reset_size);
@@ -983,7 +999,7 @@ public: // ctor
 				Fx_flag.push_back(FX);
 				Fy_flag.push_back(FY);
 			}
-			Fx_flag_ =0; Fy_flag_ =0;
+			Fx_flag_ = 0; Fy_flag_ = 0;
 			for(auto& n: Fx_flag)
 				Fx_flag_ += n;
 			for(auto& n: Fy_flag)
@@ -996,15 +1012,17 @@ public: // ctor
 		
 		double Fxtemp, Fytemp;
 		eval_F_general(l.cylinder_fbn, Fxtemp, Fytemp);
+
 		eval_F_general(l.cylinder_fbn_f, Fx_cyl_, Fy_cyl_);
 		//std::tie(Fxtemp, Fytemp) = eval_F_general(l.cylinder_fbn);
 		//std::tie(Fx_cyl_, Fy_cyl_) = eval_F_general(l.cylinder_fbn_f);
 
-		std::cout << "Size of FLuid:" << l.fluid_boundary_nodes.size();
+		std::cout << "Size of Fluid:" << l.fluid_boundary_nodes.size();
 		if(using_flagella)
 			std::cout << " // flagella : " << l.flagella_nodes[0].size();
-		std::cout << " //cyl1 " << l.cylinder_fbn.size() << " cyl2: " << l.cylinder_fbn_f.size() << std::endl;
+		std::cout << " //Cylinder Fixed" << l.cylinder_fbn.size() << " Cylinder variable: " << l.cylinder_fbn_f.size() << std::endl;
 
+		//std::cout << Fxtemp << "  " << Fx_cyl_ << "  //" << Fytemp << " " << Fy_cyl_ << std::endl;
 		Fx_cyl_ += Fxtemp;
 		Fy_cyl_ += Fytemp;
 		std::cout << "Forcex difference: " << Fx_ - Fx_cyl_ - Fx_flag_ << "  // y-Force: " << Fy_ - Fy_cyl_ - Fx_flag_ << std::endl;
@@ -1019,10 +1037,12 @@ public: // ctor
 		advect();
 		//std::cout << "before wall bc" <<std::endl;
 		wall_bc();
+		
 		//std::cout << "before collision" <<std::endl;
 		collide();
 
 		CalcForces();
+
 
 		//force << std::setw(10) << Fx_ << std::setw(10) << Fy_ << "\n";
 		if(flag_moving_cyl)

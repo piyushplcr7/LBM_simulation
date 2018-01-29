@@ -806,6 +806,7 @@ void lattice::merge_into_fbn(const bool& using_flagella)
 				fluid_boundary_nodes.push_back(*it);
 				merging_helper(it);
 			}
+			
 		}
 		//for the flagella links
 		unsigned int n_links = flagella_nodes.size();
@@ -813,23 +814,25 @@ void lattice::merge_into_fbn(const bool& using_flagella)
 		{
 			for (auto it = flagella_nodes[l].begin() ; it != flagella_nodes[l].end() ; ++it)
 			{
-				if ( !it->has_flag_property("Fluid_Boundary_Node") ) //already a solid node
+				if ( !it->has_flag_property("Fluid_Boundary_Node")  ) //already a solid node
 					{
 						it->set_flag_property("Fluid_Boundary_Node");
 						fluid_boundary_nodes.push_back(*it);
+						merging_helper(it);
 					}
-				merging_helper(it);
+				
 			}
 		}
 		//for the cylinder_fbn_f
 		for (auto it = cylinder_fbn_f.begin() ; it != cylinder_fbn_f.end() ; ++it)
 		{
-			if ( !it->has_flag_property("Fluid_Boundary_Node") ) // not already a solid node
+			if ( !it->has_flag_property("Fluid_Boundary_Node")  ) // not already a solid node
 				{
 					it->set_flag_property("Fluid_Boundary_Node");
 					fluid_boundary_nodes.push_back(*it);
+					merging_helper(it);
 				}
-			merging_helper(it);
+			
 		}
 	}
 
