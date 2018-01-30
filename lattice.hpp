@@ -601,6 +601,9 @@ void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], floa
 	int x2 = ceil(center[0] + radius)+1;  int y2 = ceil(center[1] + radius)+1;
 	coordinate<int> min_coord = {x1,y1}; //bottom left corner of the bounding box
 	coordinate<int> max_coord = {x2,y2}; //top right corner of the bounding box
+	std::ofstream solid;
+	solid.open("solid_nodes.txt",std::ios::app);
+	solid << "#x" << std::setw(5)<< "y" << std::setw(5) << std::endl;
 
 	//differentiate between the solid nodes and the rest
 	for (int j = min_coord.j; j<=max_coord.j; ++j)
@@ -612,6 +615,8 @@ void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], floa
 				if ( !(get_node(i,j).has_flag_property("solid")) ) { // if on or inside the circle and and not a solid node, mark as a solid node
 					get_node(i,j).set_flag_property("solid");
 					solid_nodes.push_back(get_node(i,j));
+					solid << i << std::setw(5)<< j << std::setw(5) << std::endl;
+
 				}
 
 			}
@@ -619,7 +624,7 @@ void lattice::add_wallCylinder(float_type center[2], float_type Cyl_vel[2], floa
 				not_solid.push_back(get_node(i,j));
 		}
 	}
-
+	solid.close();
 	//differentiate between the non solid nodes and Fluid boundary nodes
 	//if flagella is used, ensure the partition
 	for ( std::vector<node>::iterator it = not_solid.begin() ; it!=not_solid.end() ; ++it ) //iterating over the nodes inside bounding box which are not solid
@@ -795,6 +800,8 @@ void lattice::merge_into_fbn(const bool& using_flagella)
 	if (!using_flagella)
 	{
 		fluid_boundary_nodes = cylinder_fbn;
+		
+
 	}
 	else //if using flagella, then the different nodes and their contents are merged into lattice nodes
 	{	//the part for cylinder_fbn is supposed to be used only for the beginning
@@ -818,8 +825,8 @@ void lattice::merge_into_fbn(const bool& using_flagella)
 					{
 						it->set_flag_property("Fluid_Boundary_Node");
 						fluid_boundary_nodes.push_back(*it);
-						merging_helper(it);
 					}
+						merging_helper(it);
 				
 			}
 		}
@@ -830,8 +837,8 @@ void lattice::merge_into_fbn(const bool& using_flagella)
 				{
 					it->set_flag_property("Fluid_Boundary_Node");
 					fluid_boundary_nodes.push_back(*it);
-					merging_helper(it);
 				}
+					merging_helper(it);
 			
 		}
 	}
