@@ -800,7 +800,6 @@ void lattice::merge_into_fbn(const bool& using_flagella)
 	if (!using_flagella)
 	{
 		fluid_boundary_nodes = cylinder_fbn;
-		
 
 	}
 	else //if using flagella, then the different nodes and their contents are merged into lattice nodes
