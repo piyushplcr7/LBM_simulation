@@ -88,7 +88,7 @@ public: // ctor
 		//initialize flagella
 		if (using_flagella)
 		{
-			
+
 			coordinate<float> attach_point = {Cyl_center[0]+Cyl_radius,Cyl_center[1]};
 			std::cout << "Attachment Point: " << attach_point.i << "   " << attach_point.j << std::endl;
 			std::cout << "Partition Value: " << partition << std::endl;
@@ -730,7 +730,7 @@ public: // ctor
 		assert(using_flagella);
 		unsigned int n_elements = flg->n;
 		flg->updx(); //Update all x values inside the flagella class
-		std::vector<float_type> Moments(n_elements);
+		std::vector<float_type> Moments;//(n_elements);
 
 
 		for (unsigned int link_no = 0 ; link_no < n_elements ; ++link_no)
@@ -794,6 +794,21 @@ public: // ctor
 	void Adapt_flagella(const std::vector<float_type>& Moments)
 	{
 		unsigned int n_links = Moments.size();
+		for (unsigned int l_no = 0 ; l_no <  n_links ; ++l_no)
+		{
+			for (auto it = l.flagella_nodes[l_no].begin() ; it!=l.flagella_nodes[l_no].end() ; ++it)
+			{
+				unsigned int i, j; i = it->coord.i; j = it->coord.j;
+				std::cout << "printing size for check: " << l.get_node(i,j).missing_populations.size() << std::endl;
+				l.get_node(i,j).missing_populations.clear();
+				l.get_node(i,j).q_i.clear();
+				l.get_node(i,j).uvw_i.clear();
+				l.get_node(i,j).s_di_populations.clear();
+				l.get_node(i,j).unset_flag_property("Fluid_Boundary_Node");
+			}
+			l.flagella_nodes[l_no].clear();
+		}
+		l.flagella_nodes.clear();
 
 		for (auto it = l.cylinder_fbn_f.begin() ; it!=l.cylinder_fbn_f.end() ; ++it)
 		{
@@ -806,30 +821,16 @@ public: // ctor
 		}
 		l.cylinder_fbn_f.clear();
 
-		for (unsigned int l_no = 0 ; l_no <  n_links ; ++l_no)
-		{
-			for (auto it = l.flagella_nodes[l_no].begin() ; it!=l.flagella_nodes[l_no].end() ; ++it)
-			{
-				unsigned int i, j; i = it->coord.i; j = it->coord.j;
-				l.get_node(i,j).missing_populations.clear();
-				l.get_node(i,j).q_i.clear();
-				l.get_node(i,j).uvw_i.clear();
-				l.get_node(i,j).s_di_populations.clear();
-				l.get_node(i,j).unset_flag_property("Fluid_Boundary_Node");
-			}
-			l.flagella_nodes[l_no].clear();
-		}
-		l.flagella_nodes.clear();
 
 		//probably the next loop is not required because cylinder_fbn is exclusive ie does not intersect with anyone else
 		//only updation of the s_di_populations is necessary
 		for (auto it = l.cylinder_fbn.begin() ; it!=l.cylinder_fbn.end() ; ++it)
 		{
 			unsigned int i, j, reset_size; i = it->coord.i; j = it->coord.j; reset_size = it->missing_populations.size();
-			l.get_node(i,j).missing_populations.resize(reset_size);
-			l.get_node(i,j).q_i.resize(reset_size);
-			l.get_node(i,j).uvw_i.resize(reset_size);
-			l.get_node(i,j).s_di_populations.resize(reset_size);
+		//	l.get_node(i,j).missing_populations.resize(reset_size);
+		//	l.get_node(i,j).q_i.resize(reset_size);
+		//	l.get_node(i,j).uvw_i.resize(reset_size);
+		//	l.get_node(i,j).s_di_populations.resize(reset_size);
 			for (unsigned int temp = 0 ; temp < reset_size ; ++temp)
 				l.get_node(i,j).s_di_populations[temp] = l.get_node(i,j).f(it->missing_populations[temp]);
 			/*if ( !l.get_node(i,j).has_flag_property("Fluid_Boundary_Node") )
@@ -860,6 +861,7 @@ public: // ctor
 	/** @brief LB step */
 	void step()
 	{
+		std::cout << "Step No. " << time << std::endl;
 		advect();
 		wall_bc();
 		collide();
