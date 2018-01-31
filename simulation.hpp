@@ -51,7 +51,7 @@ public: // ctor
 	  output_index(0),
 		flag_moving_cyl(!true),
 		using_entropic(!true),
-		using_flagella(true)
+		using_flagella(!true)
 	{
 		// define amount to shift populations for advection (according to the array model of domain)
 		for (unsigned int i=0; i<velocity_set().size; ++i)
@@ -68,7 +68,7 @@ public: // ctor
 	{
 
 		//Initialize Cyclinder
-		Cyl_center_0[0] = l.nx/4+.5 ;//C yl_radius*10;
+		Cyl_center_0[0] = l.nx/4 ;//C yl_radius*10;
 		Cyl_center_0[1] = l.ny/2 +.5;//Cyl_radius*10;
 		Cyl_center[0] = Cyl_center_0[0];
 		Cyl_center[1] = Cyl_center_0[1];
@@ -371,8 +371,11 @@ public: // ctor
 		{
 			unsigned int x_i = l.fluid_boundary_nodes[i].coord.i;
 			unsigned int y_j = l.fluid_boundary_nodes[i].coord.j;
-			if(time ==0)
-				scatter << x_i << std::setw(15) << y_j << std::endl;
+			#pragma omp critical
+			{
+				if(time ==0)
+					scatter << x_i << std::setw(15) << y_j << std::endl;
+			}
 			/*unsigned int index = l.fluid_boundary_nodes[i].index;
 			predicate p(index);
 			auto M_size_cyl_it = std::find_if(l.cylinder_fbn.begin(),l.cylinder_fbn.end(),p);
@@ -1060,24 +1063,28 @@ public: // ctor
 		double Fxtemp, Fytemp;
 		eval_F_general(l.cylinder_fbn, Fxtemp, Fytemp);
 		eval_F_general(l.cylinder_fbn_f, Fx_cyl_, Fy_cyl_);
-
-		std::cout << "Size of Fluid: " << l.fluid_boundary_nodes.size();
-		if(using_flagella)
-			std::cout << " // Flagella : " << l.flagella_nodes[0].size();
-		std::cout << " // Cylinder Fixed: " << l.cylinder_fbn.size() << " Cylinder variable: " << l.cylinder_fbn_f.size() << std::endl;
-
 		//std::cout << Fxtemp << "  " << Fx_cyl_ << "  //" << Fytemp << " " << Fy_cyl_ << std::endl;
 		Fx_cyl_ += Fxtemp;
 		Fy_cyl_ += Fytemp;
-		std::cout << "Forcex difference: " << Fx_ - Fx_cyl_ - Fx_flag_ << "  // y-Force: " << Fy_ - Fy_cyl_ - Fy_flag_ << std::endl;
+
+		if (time ==0)
+		{
+			std::cout << "Size of Fluid: " << l.fluid_boundary_nodes.size();
+			if(using_flagella)
+				std::cout << " // Flagella : " << l.flagella_nodes[0].size();
+			std::cout << " // Cylinder Fixed: " << l.cylinder_fbn.size() << " Cylinder variable: " << l.cylinder_fbn_f.size() << std::endl;
+			std::cout << std::setprecision(10) << "Forcex difference: " << Fx_ - Fx_cyl_ - Fx_flag_ << "  // y-Force: " << Fy_ - Fy_cyl_ - Fy_flag_ << std::endl;
+		}
+
+
 	}
 
 
 	/** @brief LB step */
 	void step()
 	{
-		std::cout << "*--------------------------------------*" << std::endl;
-		std::cout << "Time; " << time << std::endl;
+		//std::cout << "*--------------------------------------*" << std::endl;
+		//std::cout << "Time; " << time << std::endl;
 		//std::cout << "before advection" <<std::endl;
 		advect();
 		//std::cout << "before wall bc" <<std::endl;

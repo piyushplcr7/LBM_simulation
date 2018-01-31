@@ -15,7 +15,7 @@ df = $(DEPDIR)/$(*F)
 
 # Compiler flags settings
 CC = g++
-CFLAGS = -O3 -std=c++11 -fopenmp -Wall -g
+CFLAGS = -O3 -std=c++11 -fopenmp -Wall #-g
 VISFLAG = -DUSE_OPENGL_VISUALIZATION
 LDFLAGS = -lgomp -lglut -lGLU -lGL -lGLEW -lX11 
 EFLAGS = -lgomp -lX11
