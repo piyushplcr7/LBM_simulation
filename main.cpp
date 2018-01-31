@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
 {
 	//omp_set_num_threads(std::max(omp_get_max_threads(),omp_get_num_procs()));
 	//omp_set_num_threads(1);
-	unsigned int nx = 800, ny = 400, Time = 50000;
+	unsigned int nx = 800, ny = 400, Time = 10000;
 	float Vmax = 0.05, Re = 100;
 	lb::simulation* sim = new lb::simulation(nx,ny,Re,Vmax);
 	sim->initialize();
@@ -55,20 +55,20 @@ int main(int argc, char *argv[])
 		v3.open("v_600_200.txt",std::ios::out);
 		v4.open("v_600_250.txt",std::ios::out);
 		force << std::setw(15) << "#Fx:" << std::setw(15) << "Fy:" << "\n";
-		v1 << std::setw(15) << "#ux:" << std::setw(15) << "uy:" << "\n";
-		v2 << std::setw(15) << "#ux:" << std::setw(15) << "uy:" << "\n";
-		v3 << std::setw(15) << "#ux:" << std::setw(15) << "uy:" << "\n";
-		v4 << std::setw(15) << "#ux:" << std::setw(15) << "uy:" << "\n";
+		//v1 << std::setw(15) << "#ux:" << std::setw(15) << "uy:" << "\n";
+		//v2 << std::setw(15) << "#ux:" << std::setw(15) << "uy:" << "\n";
+		//v3 << std::setw(15) << "#ux:" << std::setw(15) << "uy:" << "\n";
+		//v4 << std::setw(15) << "#ux:" << std::setw(15) << "uy:" << "\n";
 		// use a loop like this to run the simulation
 
 		for (unsigned int i=0; i<Time; ++i)
 		{
 			sim->step();
 			force << std::setw(15) << sim->Fx_ << std::setw(15) << sim->Fy_ << "\n";
-			v1 << std::setw(15) << sim->l.get_node(400,200).u() << std::setw(15) << sim->l.get_node(400,200).v() << "\n";
+			/*v1 << std::setw(15) << sim->l.get_node(400,200).u() << std::setw(15) << sim->l.get_node(400,200).v() << "\n";
 			v2 << std::setw(15) << sim->l.get_node(400,250).u() << std::setw(15) << sim->l.get_node(400,250).v() << "\n";
 			v3 << std::setw(15) << sim->l.get_node(600,200).u() << std::setw(15) << sim->l.get_node(600,200).v() << "\n";
-			v4 << std::setw(15) << sim->l.get_node(600,250).u() << std::setw(15) << sim->l.get_node(600,250).v() << "\n";
+			v4 << std::setw(15) << sim->l.get_node(600,250).u() << std::setw(15) << sim->l.get_node(600,250).v() << "\n";*/
 			//if (i == 14000)
 				//sim->save_populations();
 		}

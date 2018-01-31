@@ -49,7 +49,7 @@ public: // ctor
 	  file_output(false), // set to true if you want to write files
 	  output_freq(100),
 	  output_index(0),
-		flag_moving_cyl(true),
+		flag_moving_cyl(!true),
 		using_entropic(!true)
 	{
 		// define amount to shift populations for advection (according to the array model of domain)
@@ -222,7 +222,7 @@ public: // ctor
 		float_type du_x = (l.get_node(i+1,j).u()-l.get_node(i-1,j).u())/(q_i[3] + q_i[1]);
 		float_type dv_x = (l.get_node(i+1,j).v()-l.get_node(i-1,j).v())/(q_i[3] + q_i[1]);
 
-		float_type du_y = (l.get_node(i+1,j).u()-l.get_node(i-1,j).u())/(q_i[4] + q_i[2]);
+		float_type du_y = (l.get_node(i,j+1).u()-l.get_node(i,j-1).u())/(q_i[4] + q_i[2]);
 		float_type dv_y = (l.get_node(i,j+1).v()-l.get_node(i,j-1).v())/(q_i[4] + q_i[2]);
 
 		double rho = l.get_node(i,j).rho(); double cs = velocity_set().cs;
@@ -645,7 +645,7 @@ public: // ctor
 	/** @brief Calculate force on the solid object in the flow */
 	std::pair<double,double> eval_F () const {
 		double Fx=0.,Fy=0.;
-		#pragma omp parallel for schedule(dynamic)
+		//#pragma omp parallel for schedule(dynamic)
 		for (unsigned int it=0; it<l.fluid_boundary_nodes.size(); ++it) //summing for all fluid_boundary_nodes
 		{
 			unsigned int xb = l.fluid_boundary_nodes[it].coord.i; //coordinates of fluid boundary node

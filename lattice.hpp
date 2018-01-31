@@ -540,9 +540,9 @@ void lattice::add_wall(coordinate<int> min_coord, coordinate<int> max_coord)
 
 void lattice::add_wallCylinder(float_type center[2], float_type radius) //function to mark the solid nodes (In and on the cylinder) & Fluid Boundary Nodes(some of whose populations come from solid)
 {
-	std::vector<node> not_solid;
-	int x1 = floor(center[0] - radius)-1;  int y1 = floor(center[1] - radius)-1;
-	int x2 = ceil(center[0] + radius)+1;  int y2 = ceil(center[1] + radius)+1;
+	std::vector<node> not_solid; unsigned int stretch = 3;
+	int x1 = floor(center[0] - radius)-stretch;  int y1 = floor(center[1] - radius)-stretch;
+	int x2 = ceil(center[0] + radius)+stretch;  int y2 = ceil(center[1] + radius)+stretch;
 	coordinate<int> min_coord = {x1,y1}; //bottom left corner of the bounding box
 	coordinate<int> max_coord = {x2,y2}; //top right corner of the bounding box
 
