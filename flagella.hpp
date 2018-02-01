@@ -13,7 +13,7 @@
 #include <boost/numeric/odeint.hpp>
 #include <boost/numeric/ublas/io.hpp>
 #include <lapacke.h>
-#include <eigen3/Eigen/Dense>
+//#include <eigen3/Eigen/Dense>
 
 #include<fstream>
 
@@ -319,9 +319,9 @@ void flagella::getRHSMatrix(const state_type &x, state_type &dxdt, const double 
 
 	//writeOut(Matrix);
 	//std::cout << "before" << std::endl;
-	bool Eigen = true ;
+	bool Eigen = !true ;
 	if(Eigen){
-		Eigen::MatrixXd Mat(n,n);
+		/*Eigen::MatrixXd Mat(n,n);
 		Eigen::VectorXd RHS_d(n);
 		for(int i = 0; i<n; ++i){
 			RHS_d(i) = RHS(i);
@@ -340,7 +340,7 @@ void flagella::getRHSMatrix(const state_type &x, state_type &dxdt, const double 
 		for(int i = 0; i<n; ++i){
 			RHS(i) = RHS_d(i);
 		}
-		dd_alpha = RHS;
+		dd_alpha = RHS; */
 	}
 	else{
 		boost::numeric::ublas::permutation_matrix <std::size_t> piv(Matrix.size1());
