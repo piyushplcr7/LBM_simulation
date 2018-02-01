@@ -51,7 +51,7 @@ public: // ctor
 	  output_index(0),
 		flag_moving_cyl(!true),
 		using_entropic(!true),
-		using_flagella(true)
+		using_flagella(!true)
 	{
 		// define amount to shift populations for advection (according to the array model of domain)
 		for (unsigned int i=0; i<velocity_set().size; ++i)
@@ -1021,7 +1021,7 @@ public: // ctor
 
 		float_type dt = 1.0;
 		std::cout << "Moments0:  " << Moments[0] << std::endl;
-		flg->step(Moments,dt);
+		//flg->step(Moments,dt);
 		flg->writeAlphas();
 
 		//std::cout << "Stepped the flagella" << std::endl;
@@ -1073,7 +1073,7 @@ public: // ctor
 		Fx_cyl_ += Fxtemp;
 		Fy_cyl_ += Fytemp;
 
-		if (time ==0)
+		//if (time ==0)
 		{
 			std::cout << "Size of Fluid: " << l.fluid_boundary_nodes.size();
 			if(using_flagella)
@@ -1097,7 +1097,6 @@ public: // ctor
 		wall_bc();
 
 		//std::cout << "before collision" <<std::endl;
-		collide();
 
 		CalcForces();
 
@@ -1122,6 +1121,7 @@ public: // ctor
 				l.merge_into_fbn(using_flagella);
 			}
 		}
+		collide();
 
 		//std::cout << "step completed" << std::endl;
 
