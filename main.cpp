@@ -12,12 +12,12 @@ int main(int argc, char *argv[])
 {
 	//omp_set_num_threads(std::max(omp_get_max_threads(),omp_get_num_procs()));
 	//omp_set_num_threads(1);
-	unsigned int nx = 800, ny = 400 , Time = 10000;
+	unsigned int nx = 400, ny = 400 , Time = 10000;
 	float Vmax = 0.05, Re = 100;
 	lb::simulation* sim = new lb::simulation(nx,ny,Re,Vmax);
 	sim->initialize();
 	std::cout << *sim << std::endl;
-	std::cout <<"Reynoldnumber: " << Re << std::endl;
+	//std::cout <<"Reynoldnumber: " << Re << std::endl;
 	//sim->resume("Populations.txt");
 
 	#ifdef USE_OPENGL_VISUALIZATION
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 
 
 		std::ofstream force,v1,v2,v3,v4;
-		
+
 		force.open("Force.txt",std::ios::out);
 		v1.open("v_400_200.txt",std::ios::out);
 		v2.open("v_400_250.txt",std::ios::out);
@@ -71,8 +71,8 @@ int main(int argc, char *argv[])
 
 		for (unsigned int i=0; i<Time; ++i)
 		{
-			
-			//if(i==1) {sim->l.write_fields(file_name);}			
+
+			//if(i==1) {sim->l.write_fields(file_name);}
 			sim->step();
 			force << std::setw(15) << sim->Fx_ << std::setw(15) << sim->Fy_ << std::setw(15) << sim->Fx_cyl_  << std::setw(15) << sim->Fy_cyl_  << std::setw(15) << sim->Fx_flag_ << std::setw(15) << sim->Fy_flag_  << "\n";
 			//v1 << std::setw(15) << sim->l.get_node(400,200).u() << std::setw(15) << sim->l.get_node(400,200).v() << "\n";
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 			//v4 << std::setw(15) << sim->l.get_node(600,250).u() << std::setw(15) << sim->l.get_node(600,250).v() << "\n";
 			//Write to files
 			if(i > 30000 and i < 35000){
-				std::string file_name = file_name_basic + "_" + std::to_string(i) + ".txt";			
+				std::string file_name = file_name_basic + "_" + std::to_string(i) + ".txt";
 				sim->l.write_fields(file_name);
 			}
 

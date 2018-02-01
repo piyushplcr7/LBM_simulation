@@ -11,7 +11,7 @@
 //#include "distance.hpp"
 #include "flagella.hpp"
 #include "property_array.hpp"
-//#include "simulation.hpp"
+#include "simulation.hpp"
 #include <vector>
 #include <fstream>
 #include<cassert>
@@ -733,7 +733,7 @@ void lattice::add_flagella_nodes(flagella* flg, float_type Cyl_vel[2], float_typ
 					}
 					else
 					{
-						
+
 						if ( get_node(i + velocity_set().c[0][dir] ,j + velocity_set().c[1][dir] ).has_flag_property("solid") ) // if the adjacent node (according to Ci is a solid/cylinder node)
 						{
 							//std::cout << "cylinder fbn" << std::endl;
@@ -812,7 +812,7 @@ void lattice::merge_into_fbn(const bool& using_flagella)
 				fluid_boundary_nodes.push_back(*it);
 				merging_helper(it);
 			}
-			
+
 		}
 		//for the flagella links
 		unsigned int n_links = flagella_nodes.size();
@@ -826,7 +826,7 @@ void lattice::merge_into_fbn(const bool& using_flagella)
 						fluid_boundary_nodes.push_back(*it);
 					}
 						merging_helper(it);
-				
+
 			}
 		}
 		//for the cylinder_fbn_f
@@ -838,7 +838,7 @@ void lattice::merge_into_fbn(const bool& using_flagella)
 					fluid_boundary_nodes.push_back(*it);
 				}
 					merging_helper(it);
-			
+
 		}
 	}
 

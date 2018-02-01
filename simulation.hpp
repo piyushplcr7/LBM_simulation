@@ -68,15 +68,15 @@ public: // ctor
 	{
 
 		//Initialize Cyclinder
-		Cyl_center_0[0] = l.nx/4+.5 ;//C yl_radius*10;
-		Cyl_center_0[1] = l.ny/2 +.5;//Cyl_radius*10;
+		Cyl_center_0[0] = l.nx/4 ;//C yl_radius*10;
+		Cyl_center_0[1] = l.ny/2+0.4 ;//Cyl_radius*10;
 		Cyl_center[0] = Cyl_center_0[0];
 		Cyl_center[1] = Cyl_center_0[1];
 		Cyl_vel[0] = 0.0;
 		Cyl_vel[1] = 0.0;
 		unsigned int n_links = 1;
 
-		partition = Cyl_center_0[0] + Cyl_radius - 10 ;
+		partition = Cyl_center_0[0] + Cyl_radius - 15 ;
 
 		if (!using_flagella)
 			partition = l.nx;
@@ -134,7 +134,7 @@ public: // ctor
 			}
 		} //loop j ends
 
-		
+
 		//Reset vectors of boundary nodes again, because the old population are needed!!
 		//resetBN(n_links);
 		l.cylinder_fbn.clear();
@@ -146,20 +146,21 @@ public: // ctor
 			coordinate<float> attach_point = {Cyl_center[0]+Cyl_radius,Cyl_center[1]};
 			std::cout << "Attachment Point: " << attach_point.i << "   " << attach_point.j << std::endl;
 			std::cout << "Partition Value: " << partition << std::endl;
-			double length = 2*Cyl_radius, mass = 200, K=100, c=100;
+			double length = 2*Cyl_radius, mass = 10, K=.1, c=.01;
 			flg = new flagella(n_links, length, mass, K, c, attach_point.i, attach_point.j, 0, 0);
 			std::cout << "Flagella created" << std::endl;
+			flg->InitAngle(0, 3.14/4);
 			//adding the flagella nodes and corresponding fluid boundary nodes to the lattice
 			l.add_flagella_nodes(flg, Cyl_vel, Cyl_center, Cyl_radius, partition);
 			std::cout << "Flagella nodes added" <<std::endl;
 		}
 		else
 		{
-			for (auto it = l.cylinder_fbn.begin() ; it != l.cylinder_fbn.end() ; ++it )		
+			for (auto it = l.cylinder_fbn.begin() ; it != l.cylinder_fbn.end() ; ++it )
 			{
 					l.merging_helper(it);
 			}
-				
+
 		}
 
 		//Merge different fluid boundary nodes with different directions into one
@@ -363,7 +364,7 @@ public: // ctor
 	{
 		std::ofstream scatter;
 		scatter.open("Nodes_scatter.txt",std::ios::app);
-		if(time==0) 
+		if(time==0)
 			scatter << "#xj " << std::setw(15) << " yj " << std::endl;
 		//Curved Wall
 		#pragma omp parallel for schedule(dynamic)
@@ -371,14 +372,17 @@ public: // ctor
 		{
 			unsigned int x_i = l.fluid_boundary_nodes[i].coord.i;
 			unsigned int y_j = l.fluid_boundary_nodes[i].coord.j;
-			if(time ==0) 
-				scatter << x_i << std::setw(15) << y_j << std::endl;
+			#pragma omp critical
+			{
+				if(time ==0)
+					scatter << x_i << std::setw(15) << y_j << std::endl;
+			}
 			/*unsigned int index = l.fluid_boundary_nodes[i].index;
 			predicate p(index);
 			auto M_size_cyl_it = std::find_if(l.cylinder_fbn.begin(),l.cylinder_fbn.end(),p);
 			unsigned int M_size_cyl = 0; if (M_size_cyl_it != l.cylinder_fbn.end()) M_size_cyl = M_size_cyl_it->missing_populations.size();
 
-			auto M_size_cyl_f_it= std::find_if(l.cylinder_fbn_f.begin(),l.cylinder_fbn_f.end(),p);	
+			auto M_size_cyl_f_it= std::find_if(l.cylinder_fbn_f.begin(),l.cylinder_fbn_f.end(),p);
 			unsigned int M_size_cyl_f = 0; if (M_size_cyl_f_it != l.cylinder_fbn_f.end()) M_size_cyl_f = M_size_cyl_f_it->missing_populations.size();
 
 			auto M_size_flag_it = std::find_if(l.flagella_nodes[0].begin(),l.flagella_nodes[0].end(),p);
@@ -516,7 +520,7 @@ public: // ctor
 
 		}
 		scatter.close();
-		
+
 	}
 
 
@@ -833,9 +837,15 @@ public: // ctor
 				std::cout << "x = 200/ y =" << yb << " /// " << l.fluid_boundary_nodes.size() <<std::endl;
 			}*/
 			std::vector<int> D(l.get_node(xb,yb).missing_populations); //vector of intersecting populations, inverse of D-bar
+			//std::vector<float> q(l.get_node(xb,yb).q_i);
 			//std::vector<int> D(l.get_node(xb,yb).return_missing_populations());
 			for (unsigned int i = 0; i < D.size(); ++i)
 			{
+			//	if (q[i] < 1e-3)
+				//{
+				//	std::cout << "skipped force evaluation for node " << xb << "," << yb << " at q = " << q[i] << std::endl;
+					//continue;
+				//}
 				//unsigned int xs = xb + velocity_set().c[0][D[i]]; //coordinates of solid node
 				//unsigned int ys = yb + velocity_set().c[1][D[i]];
 				double common =  (l.get_node(xb,yb).f( inv_popl(D[i]) )
@@ -983,13 +993,13 @@ public: // ctor
 		//only updation of the s_di_populations is necessary
 		for (auto it = l.cylinder_fbn.begin() ; it!=l.cylinder_fbn.end() ; ++it)
 		{
-			unsigned int i, j, reset_size; 
-			i = it->coord.i; 
-			j = it->coord.j; 
+			unsigned int i, j, reset_size;
+			i = it->coord.i;
+			j = it->coord.j;
 			reset_size = it->missing_populations.size();
 			unsigned int global_size = l.get_node(i,j).missing_populations.size();
 			if(global_size != reset_size){
-				std::cout << "Size difference in the: " << i << ", " << j << " // reset:" << reset_size << " global: " << global_size << std::endl; 
+				std::cout << "Size difference in the: " << i << ", " << j << " // reset:" << reset_size << " global: " << global_size << std::endl;
 			}
 
 			for (unsigned int temp = 0 ; temp < reset_size ; ++temp){
@@ -1012,7 +1022,7 @@ public: // ctor
 
 		float_type dt = 1.0;
 		std::cout << "Moments0:  " << Moments[0] << std::endl;
-		//flg->step(Moments,dt);
+		flg->step(Moments,dt);
 		flg->writeAlphas();
 
 		//std::cout << "Stepped the flagella" << std::endl;
@@ -1056,20 +1066,24 @@ public: // ctor
 			Fx_flag_ = 0;
 			Fy_flag_ = 0;
 		}
-		
+
 		double Fxtemp, Fytemp;
 		eval_F_general(l.cylinder_fbn, Fxtemp, Fytemp);
 		eval_F_general(l.cylinder_fbn_f, Fx_cyl_, Fy_cyl_);
-		
-		std::cout << "Size of Fluid: " << l.fluid_boundary_nodes.size();
-		if(using_flagella)
-			std::cout << " // Flagella : " << l.flagella_nodes[0].size();
-		std::cout << " // Cylinder Fixed: " << l.cylinder_fbn.size() << " Cylinder variable: " << l.cylinder_fbn_f.size() << std::endl;
-
 		//std::cout << Fxtemp << "  " << Fx_cyl_ << "  //" << Fytemp << " " << Fy_cyl_ << std::endl;
 		Fx_cyl_ += Fxtemp;
 		Fy_cyl_ += Fytemp;
-		std::cout << "Forcex difference: " << Fx_ - Fx_cyl_ - Fx_flag_ << "  // y-Force: " << Fy_ - Fy_cyl_ - Fy_flag_ << std::endl;
+
+		//if (time ==0)
+		{
+			std::cout << "Size of Fluid: " << l.fluid_boundary_nodes.size();
+			if(using_flagella)
+				std::cout << " // Flagella : " << l.flagella_nodes[0].size();
+			std::cout << " // Cylinder Fixed: " << l.cylinder_fbn.size() << " Cylinder variable: " << l.cylinder_fbn_f.size() << std::endl;
+			std::cout << std::setprecision(10) << "Drag Coefficient: " << Fx_/(u_inlet*u_inlet*rho_inlet*Cyl_radius) << "  Lift Coefficient: " << Fy_/(u_inlet*u_inlet*rho_inlet*Cyl_radius) << std::endl;
+		}
+
+
 	}
 
 
@@ -1082,20 +1096,26 @@ public: // ctor
 		advect();
 		//std::cout << "before wall bc" <<std::endl;
 		wall_bc();
-		
+
 		//std::cout << "before collision" <<std::endl;
-		collide();
 
 		CalcForces();
-
+		std::vector<float_type> Moments;
 
 		//force << std::setw(10) << Fx_ << std::setw(10) << Fy_ << "\n";
-		
+
 		if(using_flagella)
 		{
 			//std::cout << "before Calculation of Moments for flagella" <<std::endl;
-			std::vector<float_type> Moments(flg->n);
 			Moments = eval_M_flagella();
+			//std::cout << "Before adaption of flagella" << std::endl;X
+			//Adapt_flagella(Moments);
+		}
+
+		collide();
+
+		if(using_flagella)
+		{
 			//std::cout << "Before adaption of flagella" << std::endl;X
 			Adapt_flagella(Moments);
 		}
@@ -1109,7 +1129,6 @@ public: // ctor
 				l.merge_into_fbn(using_flagella);
 			}
 		}
-		
 		//std::cout << "step completed" << std::endl;
 
 

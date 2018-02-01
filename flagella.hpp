@@ -13,7 +13,7 @@
 #include <boost/numeric/odeint.hpp>
 #include <boost/numeric/ublas/io.hpp>
 #include <lapacke.h>
-#include <eigen3/Eigen/Dense>
+//#include <eigen3/Eigen/Dense>
 
 #include<fstream>
 
@@ -109,7 +109,7 @@ public:
 			y_d = y_move*omega* cos(.0);
 			y_dd = .0;
 			for( int i = 0; i<n ; ++i){theta.push_back(1/12*m[i]*l[i]*l[i]) ;}
-		
+
 			txt_a.open("Alpha.txt",std::ios::out);
 			for( int i= 0; i<n; ++i)
 				txt_a << std::setw(15) << "#alpha_" << std::to_string(i) << ": ";
@@ -152,7 +152,7 @@ public:
 	float_type getY(int j){updx(); return x_vec[0][j];};
 	std::vector<float_type> getCoord(int i){updx(); return x_vec[i];}
 	float_type sumMass(int first, int last);
-	void writeAlphas(){ std::cout << "Alphas:" << std::endl; for(int i = 0; i<n;++i){std::cout << i << "  " << alpha[2*i] << std::endl; }}
+	void writeAlphas(){ std::cout << "Alphas:" << std::endl; for(int i = 0; i<n;++i){std::cout << i << "  " << alpha[2*i]/3.14*180. <<" degrees"<< std::endl; }}
 	bool check_intersection (const unsigned int&,
 																													const unsigned int&,
 																													const unsigned int&,std::vector<double>&);
@@ -169,7 +169,7 @@ std::pair<double,double> line(const double& x0, const double& y0,
 	bool intersection(const double& i0, const double& j0,  //i,j denote lattice points
 																											const double& i1, const double& j1,
 																											const double& x0, const double& y0,  //x,y denote link points
-																											const double& x1, const double& y1, 
+																											const double& x1, const double& y1,
 																											double& x_in, double& y_in)
 	{
 		std::pair<double,double> line1,line2;
@@ -319,9 +319,9 @@ void flagella::getRHSMatrix(const state_type &x, state_type &dxdt, const double 
 
 	//writeOut(Matrix);
 	//std::cout << "before" << std::endl;
-	bool Eigen = true ;
+	bool Eigen = !true ;
 	if(Eigen){
-		Eigen::MatrixXd Mat(n,n);
+		/*Eigen::MatrixXd Mat(n,n);
 		Eigen::VectorXd RHS_d(n);
 		for(int i = 0; i<n; ++i){
 			RHS_d(i) = RHS(i);
@@ -340,7 +340,7 @@ void flagella::getRHSMatrix(const state_type &x, state_type &dxdt, const double 
 		for(int i = 0; i<n; ++i){
 			RHS(i) = RHS_d(i);
 		}
-		dd_alpha = RHS;
+		dd_alpha = RHS; */
 	}
 	else{
 		boost::numeric::ublas::permutation_matrix <std::size_t> piv(Matrix.size1());

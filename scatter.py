@@ -18,14 +18,16 @@ for line in lines:
 	X += [int(line.split()[0])]
 	y += [int(line.split()[1])]"""
 
-R = 50
+R = 10*2
 nx = 800
 ny = 400
-circle = np.array([[R*math.cos(theta)+nx/4+.5, R*math.sin(theta)+ny/2+.5] for theta in np.linspace(0,2*np.pi,100)])
+centerx = nx/4
+centery = ny/2+.3
+circle = np.array([[R*math.cos(theta)+centerx, R*math.sin(theta)+centery] for theta in np.linspace(0,2*np.pi,500)])
 #X = np.array([X])
 #y = np.array([y])
 plt.figure()
-flagella = np.array([[x,ny/2+.5] for x in np.linspace(R+nx/4+.5,3*R+nx/4+.5)])
+flagella = np.array([[x,ny/2+.5] for x in np.linspace(R+centerx,3*R+centerx)])
 plt.plot(flagella[:,0],flagella[:,1],c="k")
 plt.plot(circle[:,0],circle[:,1],c="k")
 #print "x is",x
