@@ -42,7 +42,7 @@ public: // ctor
 	  shift(velocity_set().size),
 	  Re(_Re),
 	  Vmax(_Vmax),
-		Cyl_radius(nx/80),
+		Cyl_radius(10),
 	  visc(Vmax*Cyl_radius*2/Re),
 	  beta(1./(6*visc+1)),
 	  time(0),
@@ -710,8 +710,11 @@ public: // ctor
 	{
 		advect();
 		wall_bc();
-		collide();
 		std::tie(Fx_,Fy_) = eval_F();
+		Fx_ /=  u_inlet * u_inlet * rho_inlet * Cyl_radius;
+		Fy_ /=  u_inlet * u_inlet * rho_inlet * Cyl_radius;
+		std::cout << "Drag: " << Fx_ << " " << Fy_ << std::endl;
+		collide();
 		//force << std::setw(10) << Fx_ << std::setw(10) << Fy_ << "\n";
 		if(flag_moving_cyl)
 			Adapt_Cyl();
