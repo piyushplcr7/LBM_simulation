@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
-cyl_r = 10;
+cyl_r = 20;
 u_inf = 0.05;
 rho_inf = 1;
 D = 2*cyl_r;

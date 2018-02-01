@@ -42,7 +42,7 @@ public: // ctor
 	  shift(velocity_set().size),
 	  Re(_Re),
 	  Vmax(_Vmax),
-	 	Cyl_radius(10),
+	 	Cyl_radius(2*nx/80),
 	  visc(Vmax*Cyl_radius*2/Re),
 	  beta(1./(6*visc+1)),
 	  time(0),
@@ -51,7 +51,7 @@ public: // ctor
 	  output_index(0),
 		flag_moving_cyl(!true),
 		using_entropic(!true),
-		using_flagella(!true)
+		using_flagella(true)
 	{
 		// define amount to shift populations for advection (according to the array model of domain)
 		for (unsigned int i=0; i<velocity_set().size; ++i)
@@ -69,14 +69,14 @@ public: // ctor
 
 		//Initialize Cyclinder
 		Cyl_center_0[0] = l.nx/4 ;//C yl_radius*10;
-		Cyl_center_0[1] = l.ny/2 +.5;//Cyl_radius*10;
+		Cyl_center_0[1] = l.ny/2+0.3 ;//Cyl_radius*10;
 		Cyl_center[0] = Cyl_center_0[0];
 		Cyl_center[1] = Cyl_center_0[1];
 		Cyl_vel[0] = 0.0;
 		Cyl_vel[1] = 0.0;
 		unsigned int n_links = 1;
 
-		partition = Cyl_center_0[0] + Cyl_radius - 10 ;
+		partition = Cyl_center_0[0] + Cyl_radius - 15 ;
 
 		if (!using_flagella)
 			partition = l.nx;
@@ -836,9 +836,15 @@ public: // ctor
 				std::cout << "x = 200/ y =" << yb << " /// " << l.fluid_boundary_nodes.size() <<std::endl;
 			}*/
 			std::vector<int> D(l.get_node(xb,yb).missing_populations); //vector of intersecting populations, inverse of D-bar
+			//std::vector<float> q(l.get_node(xb,yb).q_i);
 			//std::vector<int> D(l.get_node(xb,yb).return_missing_populations());
 			for (unsigned int i = 0; i < D.size(); ++i)
 			{
+			//	if (q[i] < 1e-3)
+				//{
+				//	std::cout << "skipped force evaluation for node " << xb << "," << yb << " at q = " << q[i] << std::endl;
+					//continue;
+				//}
 				//unsigned int xs = xb + velocity_set().c[0][D[i]]; //coordinates of solid node
 				//unsigned int ys = yb + velocity_set().c[1][D[i]];
 				double common =  (l.get_node(xb,yb).f( inv_popl(D[i]) )
@@ -1015,7 +1021,7 @@ public: // ctor
 
 		float_type dt = 1.0;
 		std::cout << "Moments0:  " << Moments[0] << std::endl;
-		//flg->step(Moments,dt);
+		flg->step(Moments,dt);
 		flg->writeAlphas();
 
 		//std::cout << "Stepped the flagella" << std::endl;
@@ -1083,8 +1089,8 @@ public: // ctor
 	/** @brief LB step */
 	void step()
 	{
-		//std::cout << "*--------------------------------------*" << std::endl;
-		//std::cout << "Time; " << time << std::endl;
+		std::cout << "*--------------------------------------*" << std::endl;
+		std::cout << "Time; " << time << std::endl;
 		//std::cout << "before advection" <<std::endl;
 		advect();
 		//std::cout << "before wall bc" <<std::endl;

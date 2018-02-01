@@ -18,11 +18,11 @@ for line in lines:
 	X += [int(line.split()[0])]
 	y += [int(line.split()[1])]"""
 
-R = 10
-nx = 800
-ny = 400
+R = 10*2
+nx = 800*2
+ny = 400*2
 centerx = nx/4
-centery = ny/2+.5
+centery = ny/2+.3
 circle = np.array([[R*math.cos(theta)+centerx, R*math.sin(theta)+centery] for theta in np.linspace(0,2*np.pi,500)])
 #X = np.array([X])
 #y = np.array([y])

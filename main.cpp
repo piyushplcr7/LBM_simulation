@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 {
 	//omp_set_num_threads(std::max(omp_get_max_threads(),omp_get_num_procs()));
 	//omp_set_num_threads(1);
-	unsigned int nx = 800, ny = 400 , Time = 4000;
+	unsigned int nx = 800, ny = 400 , Time = 10000;
 	float Vmax = 0.05, Re = 100;
 	lb::simulation* sim = new lb::simulation(nx,ny,Re,Vmax);
 	sim->initialize();
