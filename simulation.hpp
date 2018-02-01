@@ -42,7 +42,7 @@ public: // ctor
 	  shift(velocity_set().size),
 	  Re(_Re),
 	  Vmax(_Vmax),
-	 	Cyl_radius(2*nx/80),
+	 	Cyl_radius(10),
 	  visc(Vmax*Cyl_radius*2/Re),
 	  beta(1./(6*visc+1)),
 	  time(0),
@@ -51,7 +51,7 @@ public: // ctor
 	  output_index(0),
 		flag_moving_cyl(!true),
 		using_entropic(!true),
-		using_flagella(!true)
+		using_flagella(true)
 	{
 		// define amount to shift populations for advection (according to the array model of domain)
 		for (unsigned int i=0; i<velocity_set().size; ++i)
@@ -69,7 +69,7 @@ public: // ctor
 
 		//Initialize Cyclinder
 		Cyl_center_0[0] = l.nx/4 ;//C yl_radius*10;
-		Cyl_center_0[1] = l.ny/2+0.3 ;//Cyl_radius*10;
+		Cyl_center_0[1] = l.ny/2+0.4 ;//Cyl_radius*10;
 		Cyl_center[0] = Cyl_center_0[0];
 		Cyl_center[1] = Cyl_center_0[1];
 		Cyl_vel[0] = 0.0;
@@ -146,9 +146,10 @@ public: // ctor
 			coordinate<float> attach_point = {Cyl_center[0]+Cyl_radius,Cyl_center[1]};
 			std::cout << "Attachment Point: " << attach_point.i << "   " << attach_point.j << std::endl;
 			std::cout << "Partition Value: " << partition << std::endl;
-			double length = 2*Cyl_radius, mass = 200, K=100, c=100;
+			double length = 2*Cyl_radius, mass = 10, K=.1, c=.01;
 			flg = new flagella(n_links, length, mass, K, c, attach_point.i, attach_point.j, 0, 0);
 			std::cout << "Flagella created" << std::endl;
+			flg->InitAngle(0, 3.14/4);
 			//adding the flagella nodes and corresponding fluid boundary nodes to the lattice
 			l.add_flagella_nodes(flg, Cyl_vel, Cyl_center, Cyl_radius, partition);
 			std::cout << "Flagella nodes added" <<std::endl;
@@ -1021,7 +1022,7 @@ public: // ctor
 
 		float_type dt = 1.0;
 		std::cout << "Moments0:  " << Moments[0] << std::endl;
-		//flg->step(Moments,dt);
+		flg->step(Moments,dt);
 		flg->writeAlphas();
 
 		//std::cout << "Stepped the flagella" << std::endl;
@@ -1079,7 +1080,7 @@ public: // ctor
 			if(using_flagella)
 				std::cout << " // Flagella : " << l.flagella_nodes[0].size();
 			std::cout << " // Cylinder Fixed: " << l.cylinder_fbn.size() << " Cylinder variable: " << l.cylinder_fbn_f.size() << std::endl;
-			std::cout << std::setprecision(10) << "Forcex difference: " << Fx_ - Fx_cyl_ - Fx_flag_ << "  // y-Force: " << Fy_ - Fy_cyl_ - Fy_flag_ << std::endl;
+			std::cout << std::setprecision(10) << "Drag Coefficient: " << Fx_/(u_inlet*u_inlet*rho_inlet*Cyl_radius) << "  Lift Coefficient: " << Fy_/(u_inlet*u_inlet*rho_inlet*Cyl_radius) << std::endl;
 		}
 
 
@@ -1099,15 +1100,22 @@ public: // ctor
 		//std::cout << "before collision" <<std::endl;
 
 		CalcForces();
-
+		std::vector<float_type> Moments;
 
 		//force << std::setw(10) << Fx_ << std::setw(10) << Fy_ << "\n";
 
 		if(using_flagella)
 		{
 			//std::cout << "before Calculation of Moments for flagella" <<std::endl;
-			std::vector<float_type> Moments(flg->n);
 			Moments = eval_M_flagella();
+			//std::cout << "Before adaption of flagella" << std::endl;X
+			//Adapt_flagella(Moments);
+		}
+
+		collide();
+
+		if(using_flagella)
+		{
 			//std::cout << "Before adaption of flagella" << std::endl;X
 			Adapt_flagella(Moments);
 		}
@@ -1121,8 +1129,6 @@ public: // ctor
 				l.merge_into_fbn(using_flagella);
 			}
 		}
-		collide();
-
 		//std::cout << "step completed" << std::endl;
 
 
