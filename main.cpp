@@ -3,6 +3,7 @@
 #include "visualization.hpp"
 #endif
 #include <omp.h>
+#include<string>
 
 
 
@@ -10,7 +11,7 @@ int main(int argc, char *argv[])
 {
 	//omp_set_num_threads(std::max(omp_get_max_threads(),omp_get_num_procs()));
 	//omp_set_num_threads(1);
-	unsigned int nx = 800, ny = 400, Time = 10000;
+	unsigned int nx = 800, ny = 400, Time = 100000;
 	float Vmax = 0.05, Re = 100;
 	lb::simulation* sim = new lb::simulation(nx,ny,Re,Vmax);
 	sim->initialize();
@@ -47,13 +48,14 @@ int main(int argc, char *argv[])
 
 
 		//std::cout << sim->l << std::endl;
-
+		std::string F_file = "F_Cylinder" + std::string("_Re_") + std::to_string(Re) + std::string(".txt");
+		std::string V_file = "V_Cylinder_600_200" + std::string("_Re_") + std::to_string(Re) + std::string(".txt");
 		std::ofstream force,v1,v2,v3,v4;
-		force.open("Force.txt",std::ios::out);
-		v1.open("v_400_200.txt",std::ios::out);
-		v2.open("v_400_250.txt",std::ios::out);
-		v3.open("v_600_200.txt",std::ios::out);
-		v4.open("v_600_250.txt",std::ios::out);
+		force.open(F_file,std::ios::out);
+		//v1.open("v_400_200.txt",std::ios::out);
+		//v2.open("v_400_250.txt",std::ios::out);
+		v3.open(V_file,std::ios::out);
+		//v4.open("v_600_250.txt",std::ios::out);
 		force << std::setw(15) << "#Fx:" << std::setw(15) << "Fy:" << "\n";
 		//v1 << std::setw(15) << "#ux:" << std::setw(15) << "uy:" << "\n";
 		//v2 << std::setw(15) << "#ux:" << std::setw(15) << "uy:" << "\n";
@@ -65,18 +67,18 @@ int main(int argc, char *argv[])
 		{
 			sim->step();
 			force << std::setw(15) << sim->Fx_ << std::setw(15) << sim->Fy_ << "\n";
-			/*v1 << std::setw(15) << sim->l.get_node(400,200).u() << std::setw(15) << sim->l.get_node(400,200).v() << "\n";
-			v2 << std::setw(15) << sim->l.get_node(400,250).u() << std::setw(15) << sim->l.get_node(400,250).v() << "\n";
+			//v1 << std::setw(15) << sim->l.get_node(400,200).u() << std::setw(15) << sim->l.get_node(400,200).v() << "\n";
+			//v2 << std::setw(15) << sim->l.get_node(400,250).u() << std::setw(15) << sim->l.get_node(400,250).v() << "\n";
 			v3 << std::setw(15) << sim->l.get_node(600,200).u() << std::setw(15) << sim->l.get_node(600,200).v() << "\n";
-			v4 << std::setw(15) << sim->l.get_node(600,250).u() << std::setw(15) << sim->l.get_node(600,250).v() << "\n";*/
+			//v4 << std::setw(15) << sim->l.get_node(600,250).u() << std::setw(15) << sim->l.get_node(600,250).v() << "\n";
 			//if (i == 14000)
 				//sim->save_populations();
 		}
 		force.close();
-		v1.close();
-		v2.close();
+		//v1.close();
+		//v2.close();
 		v3.close();
-		v4.close();
+		//v4.close();
 	#endif
 
 	return 0;
